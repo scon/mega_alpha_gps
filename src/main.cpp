@@ -1,13 +1,24 @@
 #include <Arduino.h>
 
-
 #define Fona3G Serial1
 #define UltGps Serial2
 
-enum State_enum {INIT, WHAIT_GPS, MEASURING, SLEEP};
+#define RST_FONA 5
+#define KEY_FONA 7
+#define PS_FONA  3
+
+#define GPS_ENABLE 4
+#define GPS_FIX 2
+
+enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, SLEEP};
 
 uint8_t state = INIT;
 
+// SD-Card-Reader
+
+#include <SPI.h>
+#include <SD.h>
+File myFile;
 
 // GPS
 #include <Adafruit_GPS.h>
@@ -26,9 +37,6 @@ boolean usingInterrupt = true;
 #include <Adafruit_GFX.h>
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
-
-
-
 
 //#include "sova.h"
 #include "nano_gfx.h"
@@ -56,12 +64,17 @@ float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Displ
 
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
-const int Messwerte_Mittel = 5; // Anzahl der Messungen, die zu einem einzelnen Messwert gemittelt werden
+const int Messwerte_Mittel = 1; // Anzahl der Messungen, die zu einem einzelnen Messwert gemittelt werden
 const int MessDelay = MessInterval / Messwerte_Mittel; /* Pause zwischen Messungen, die zu einem Messwert gemittelt werden -> alle "MessDelay" ms ein Messwert,
-bis Messwerte_Mittel mal gemessen wurde, dann wird ein Mittelwert gebildet und ausgegeben. */
-
+                                                          bis Messwerte_Mittel mal gemessen wurde, dann wird ein Mittelwert gebildet und ausgegeben. */
 unsigned long time;
 unsigned long millis_time;
+unsigned long measurement_timer = 0;
+unsigned long measurement_timeout = 8000;
+unsigned long gps_timer = 0;
+unsigned long gps_timeout = 7000;
+
+
 unsigned long counter = 0;
 
 // Sensor Config
@@ -77,307 +90,447 @@ const char* SN3_AE = "NO_AE";
 const char* InfluxDB_Server_IP = "130.149.67.141";
 const int InfluxDB_Server_Port = 8086;
 const char* InfluxDB_Database = "ALPHASENSE";
-char MEASUREMENT_NAME[34] = "alphasense_mobil_1" ; //(+ Sensornummer)
+char MEASUREMENT_NAME[34] = "alphasense_mobil_1";  //(+ Sensornummer)
+
+int linesinfile = 0;
 
 String DisplayState = "";
 String Uploadstring = "";
+String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash ="", entry_geohash ="";
 // PROTOTYPES
 
+// Fona3G Functions
+#include <FONA_FUNCTIONS.h>
 
 float getUmrechnungsfaktor(){
-  float Faktor;
-  if(ads_A.getGain()==GAIN_TWOTHIRDS){
-    Faktor = 0.1875;
-  }
-  if(ads_A.getGain()==GAIN_ONE){
-    Faktor = 0.125;
-  }
-  if(ads_A.getGain()==GAIN_TWO){
-    Faktor = 0.0625;
-  }
-  if(ads_A.getGain()==GAIN_FOUR){
-    Faktor = 0.03125;
-  }
-  return Faktor;
+        float Faktor;
+        if(ads_A.getGain()==GAIN_TWOTHIRDS) {
+                Faktor = 0.1875;
+        }
+        if(ads_A.getGain()==GAIN_ONE) {
+                Faktor = 0.125;
+        }
+        if(ads_A.getGain()==GAIN_TWO) {
+                Faktor = 0.0625;
+        }
+        if(ads_A.getGain()==GAIN_FOUR) {
+                Faktor = 0.03125;
+        }
+        return Faktor;
 }
 
+void writeLineToFile(String line){
+myFile = SD.open("data.txt", FILE_WRITE);
+
+// if the file opened okay, write to it:
+if (myFile) {
+Serial.print("Writing to data.txt...");
+myFile.println(line);
+// close the file:
+myFile.close();
+Serial.println("done.");
+} else {
+// if the file didn't open, print an error:
+Serial.println("error opening data.txt");
+}
+}
 
 void generateUploadString(){
-  // Messwerte in String zusammenbauen
-  Uploadstring =
-  String(MEASUREMENT_NAME) + "," +
+        // Messwerte in String zusammenbauen
+        Uploadstring =
+                String(MEASUREMENT_NAME) + "," +
 
-  //Tags
-  "host=alphasense_mobil_1" + ","    ; /* +
-  "hour=" + String(gpsHour) + "," +
-  "minute=" + String(gpsMinute) + "," +
-  "geohash="        + Geohash_normal + "," +
-  "geohash_fine="   + Geohash_fine   + "," +
-  "geohash_normal=" + Geohash_normal + "," +
-  "geohash_coarse=" + Geohash_coarse +
-   " " + // Leerzeichen trennt Tags und Fields
+                //Tags
+                "host=alphasense_mobil_1" + ","  +
+                "hour=" + String(GPS.hour) + "," +
+                "minute=" + String(GPS.minute) + "," +
+                "geohash="        + Geohash_normal + "," +
+                "geohash_fine="   + Geohash_fine   + "," +
+                "geohash_normal=" + Geohash_normal + "," +
+                "geohash_coarse=" + Geohash_coarse +
+                " " +                                     // Leerzeichen trennt Tags und Fields
 
-  //Messwerte
-  SN1 +    "=" + String(SN1_value , 4) + "," +
-  SN2 +    "=" + String(SN2_value, 4) + "," +
-  SN3 +    "=" + String(SN3_value,4) + "," +
-  TEMP +   "=" + String(Temp_value, 4) + "," +
-  SN1_AE + "=" + String(SN1_AE_value, 4) + "," +
-  SN2_AE + "=" + String(SN2_AE_value, 4) + "," +
-  SN3_AE + "=" + String(SN3_AE_value, 4) + "," +
+                //Messwerte
+                SN1 +    "=" + String(SN1_value, 4) + "," +
+                SN2 +    "=" + String(SN2_value, 4) + "," +
+                SN3 +    "=" + String(SN3_value,4) + "," +
+                TEMP +   "=" + String(Temp_value, 4) + "," +
+                SN1_AE + "=" + String(SN1_AE_value, 4) + "," +
+                SN2_AE + "=" + String(SN2_AE_value, 4) + "," +
+                SN3_AE + "=" + String(SN3_AE_value, 4) + "," +
 
-  //Position & Speed
-  "lng=" + longitude + "," +
-  "lat=" + latitude + "," +
-  "speed=" + gpsSpeed; */
+                //Position & Speed
+                "lng=" + String(GPS.longitudeDegrees, 4) + "," +
+                "lat=" + String(GPS.latitudeDegrees, 4) + "," +
+                "speed=" + (GPS.speed * 1.852) +   " " +   // Knots to km/h
+                String(now());
+
 }
 
-
-
-void Messung(){
-
-  float SN1_Integral = 0;
-  float SN2_Integral = 0;
-  float SN3_Integral = 0;
-  float TEMP_Integral = 0;
-
-  float SN1_AE_Integral = 0;
-  float SN2_AE_Integral = 0;
-  float SN3_AE_Integral = 0;
-
-  millis_time = millis();
-  //Messung über i = Messwerte_Mittel Messwerte
-  for (int i = 0; i < Messwerte_Mittel; i++) {
-    // Abrufen der Analogeinganswerte am ADS1115
-    // Abrufen der an den Pins anliegenden Werte &
-    //Integration über Anzahl der zu mittelnden Messwerte
-
-    //ADC_A
-    SN1_AE_Integral+=ads_A.readADC_SingleEnded(1);  // NO2   Aux 1
-    SN2_AE_Integral+=ads_A.readADC_SingleEnded(2);  // O3/NO Aux 2
-    SN3_AE_Integral+=ads_A.readADC_SingleEnded(3);  // NO    Aux 3
-    TEMP_Integral  +=ads_A.readADC_SingleEnded(0);  // PT+
-
-    //ADC_B
-    SN1_Integral+=ads_B.readADC_SingleEnded(1); // NO2   Work 1
-    SN2_Integral+=ads_B.readADC_SingleEnded(2); // O3/NO Work 2
-    SN3_Integral+=ads_B.readADC_SingleEnded(3); // NO    Work 3
-
-    // delay(15);
-  }
-
-   millis_time = millis() - millis_time;
-
-   SN1_Integral = SN1_Integral / Messwerte_Mittel; // Bildung des arithmetischen Mittels
-   SN2_Integral = SN2_Integral / Messwerte_Mittel;
-   SN3_Integral = SN3_Integral / Messwerte_Mittel;
-   TEMP_Integral = TEMP_Integral / Messwerte_Mittel;
-   SN1_AE_Integral = SN1_AE_Integral / Messwerte_Mittel; // Bildung des arithmetischen Mittels
-   SN2_AE_Integral = SN2_AE_Integral / Messwerte_Mittel;
-   SN3_AE_Integral = SN3_AE_Integral / Messwerte_Mittel;
-
-   Umrechnungsfaktor = getUmrechnungsfaktor();
-
-   SN1_value = Umrechnungsfaktor * SN1_Integral;
-   SN2_value = Umrechnungsfaktor * SN2_Integral;
-   SN3_value = Umrechnungsfaktor * SN3_Integral;
-   Temp_value = Umrechnungsfaktor * TEMP_Integral;
-
-   SN1_AE_value = Umrechnungsfaktor * SN1_AE_Integral;
-   SN2_AE_value = Umrechnungsfaktor * SN2_AE_Integral;
-   SN3_AE_value = Umrechnungsfaktor * SN3_AE_Integral;
-}
 
 void STATE_INIT(){
 
-Serial.println("Init_State:");
-Serial.println("Nothing to do so far...starting Measurement");
+        Serial.println("Init_State:");
+        Serial.println("Nothing to do so far...starting Measurement!");
 
-state = MEASURING;
+        state = MEASURING;
+}
+
+void STATE_WHAIT_GPS(){
+        Serial.println("Waiting for GPS-fix...");
+        if (GPS.newNMEAreceived()) {
+                GPS.parse(GPS.lastNMEA());
+
+        }
+        if (GPS.fix) {
+                Serial.println("Got GPS-fix! Switching to MEASURING state!");
+                state = MEASURING;
+        }
+
+
+
 }
 
 void STATE_MEASURING(){
 
-  Serial.println("Measuring...");
-  Messung();
-  Serial.println(String(SN1_value));
+        float SN1_Integral = 0;
+        float SN2_Integral = 0;
+        float SN3_Integral = 0;
+        float TEMP_Integral = 0;
 
-  if (GPS.newNMEAreceived()) {
-  // a tricky thing here is if we print the NMEA sentence, or data
-  // we end up not listening and catching other sentences!
-  // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
-  //Serial.println(GPS.lastNMEA());   // this also sets the newNMEAreceived() flag to false
+        float SN1_AE_Integral = 0;
+        float SN2_AE_Integral = 0;
+        float SN3_AE_Integral = 0;
 
-  if (!GPS.parse(GPS.lastNMEA())){   // this also sets the newNMEAreceived() flag to false
-    Serial.println("NoSentence");
-    return;  // we can fail to parse a sentence in which case we should just wait for another#
-  }
+        int measurement_counter = 0;
+
+        //Check for GPS-fix
+        if (!GPS.fix) {
+                state = WHAIT_GPS;
+                Serial.println("No GPS-fix! Switching to WAIT_GPS state!");
+                return;
+        }
+
+        Serial.println("Start Measurement...");
+
+        measurement_timer = millis();
+        entry_geohash = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
+        last_geohash = entry_geohash;
+
+        while (last_geohash == entry_geohash && millis() - measurement_timer < measurement_timeout){
+
+        gps_timer = millis();
+        while (!GPS.parse(GPS.lastNMEA())) {
+
+          if (millis() - gps_timer > gps_timeout) {
+                  Serial.println("GPS-Timeout!");
+                  last_geohash = "timeout";
+                  break;
+          }
+
+                // Abrufen der Analogeinganswerte am ADS1115
+                // Abrufen der an den Pins anliegenden Werte
+                measurement_counter += 1;
+                //ADC_A
+                SN1_AE_Integral+=ads_A.readADC_SingleEnded(1); // NO2   Aux 1
+                SN2_AE_Integral+=ads_A.readADC_SingleEnded(2); // O3/NO Aux 2
+                SN3_AE_Integral+=ads_A.readADC_SingleEnded(3); // NO    Aux 3
+                TEMP_Integral  +=ads_A.readADC_SingleEnded(0);// PT+
+
+                //ADC_B
+                SN1_Integral+=ads_B.readADC_SingleEnded(1); // NO2   Work 1
+                SN2_Integral+=ads_B.readADC_SingleEnded(2); // O3/NO Work 2
+                SN3_Integral+=ads_B.readADC_SingleEnded(3); // NO    Work 3
+
+                //Messung();
+                //Serial.println(String(SN1_value));
+        }
+
+        last_geohash = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
+        Serial.println("Entry-Geohash: " + entry_geohash);
+        Serial.println("Last-Geohash:  " + last_geohash);
+        Serial.println("Meas.No.:      " + String(measurement_counter));
+
+
+      }
+
+        if (measurement_counter < 1) {
+                Serial.println("0 Measurements. ABORTING !");
+                return;
+        }
+
+        SN1_Integral = SN1_Integral / measurement_counter; // Bildung des arithmetischen Mittels
+        SN2_Integral = SN2_Integral / measurement_counter;
+        SN3_Integral = SN3_Integral / measurement_counter;
+        TEMP_Integral = TEMP_Integral / measurement_counter;
+        SN1_AE_Integral = SN1_AE_Integral / measurement_counter; // Bildung des arithmetischen Mittels
+        SN2_AE_Integral = SN2_AE_Integral / measurement_counter;
+        SN3_AE_Integral = SN3_AE_Integral / measurement_counter;
+
+        Umrechnungsfaktor = getUmrechnungsfaktor();
+
+        SN1_value = Umrechnungsfaktor * SN1_Integral;
+        SN2_value = Umrechnungsfaktor * SN2_Integral;
+        SN3_value = Umrechnungsfaktor * SN3_Integral;
+        Temp_value = Umrechnungsfaktor * TEMP_Integral;
+
+        SN1_AE_value = Umrechnungsfaktor * SN1_AE_Integral;
+        SN2_AE_value = Umrechnungsfaktor * SN2_AE_Integral;
+        SN3_AE_value = Umrechnungsfaktor * SN3_AE_Integral;
+
+        Geohash_fine   = hasher_fine.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
+        Geohash_normal = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
+        Geohash_coarse = hasher_coarse.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
+
+
+
+        setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+
+        //Serial.print("NOW:"); Serial.println (now());
+
+        generateUploadString();
+
+        Serial.println("DONE");
+        linesinfile += 1;
+
+        Serial.println(String(SN1_value));
+        Serial.println(String(SN1_AE_value));
+        Serial.println("Measurements taken: " + String(measurement_counter));
+        Serial.println("Lines in file: " + String(linesinfile));
+
+        Serial.println(Uploadstring);
+
+        writeLineToFile(Uploadstring);
+
+
+
+
+        if (linesinfile > 4) {
+          Serial.println("Uploading!");
+          state = SEND_DATA;
+          return;
+        }
+
+
+
+        Serial.print("\nTime: ");
+        Serial.print(GPS.hour, DEC); Serial.print(':');
+        Serial.print(GPS.minute, DEC); Serial.print(':');
+        Serial.print(GPS.seconds, DEC); Serial.print('.');
+        Serial.println(GPS.milliseconds);
+        Serial.print("Date: ");
+        Serial.print(GPS.day, DEC); Serial.print('/');
+        Serial.print(GPS.month, DEC); Serial.print("/20");
+        Serial.println(GPS.year, DEC);
+        Serial.print("Fix: "); Serial.print((int)GPS.fix);
+        Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+
+        if (GPS.fix) {
+                Serial.print("Location: ");
+                Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
+                Serial.print(", ");
+                Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
+                Serial.print("Location (in degrees, works with Google Maps): ");
+                Serial.print(GPS.latitudeDegrees, 4);
+                Serial.print(", ");
+                Serial.println(GPS.longitudeDegrees, 4);
+
+                Serial.print("Speed (knots): "); Serial.println(GPS.speed);
+                Serial.print("Angle: "); Serial.println(GPS.angle);
+                Serial.print("Altitude: "); Serial.println(GPS.altitude);
+                Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
+
+                setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+
+                Serial.print("NOW:"); Serial.println (now());
+        }
+
 }
 
-Serial.print("\nTime: ");
-    Serial.print(GPS.hour, DEC); Serial.print(':');
-    Serial.print(GPS.minute, DEC); Serial.print(':');
-    Serial.print(GPS.seconds, DEC); Serial.print('.');
-    Serial.println(GPS.milliseconds);
-    Serial.print("Date: ");
-    Serial.print(GPS.day, DEC); Serial.print('/');
-    Serial.print(GPS.month, DEC); Serial.print("/20");
-    Serial.println(GPS.year, DEC);
-    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-    if (GPS.fix) {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-      Serial.print(", ");
-      Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      Serial.print("Location (in degrees, works with Google Maps): ");
-      Serial.print(GPS.latitudeDegrees, 4);
-      Serial.print(", ");
-      Serial.println(GPS.longitudeDegrees, 4);
+void STATE_SEND_DATA(){
 
-      Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-      Serial.print("Altitude: "); Serial.println(GPS.altitude);
-      Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
+        Serial.println("SENDING DATA...");
 
-      setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+        ModemTurnOn();
 
-      Serial.print("NOW:"); Serial.println (now());
-}
+   delay(15000);
 
+   QuickConnectToNetwork();
+   QuickConnectToNetwork();
 
+   delay(15000);
 
+   Parser("AT+CHTTPSSTART", 1000);
+   Parser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", 1000);
+
+SendFromSD();
+
+ATCOM("AT+CHTTPSSEND", 1500);
+ATCOM("AT+CHTTPSRECV=88", 1000);
+ATCOM("AT+CHTTPSCLSE", 500);
+ATCOM("AT+CHTTPSSTOP", 500);
+
+delay(10000);
+
+ModemTurnOff();
+
+delay(10000);
+
+        state = MEASURING;
 }
 
 void state_machine_run()
 {
-  switch(state)
-  {
-    case INIT:
-    STATE_INIT();
-      break;
+        switch(state)
+        {
+        case INIT:
+                STATE_INIT();
+                break;
 
-    case MEASURING:
-    STATE_MEASURING();
+        case MEASURING:
+                STATE_MEASURING();
 
-      break;
+                break;
 
-  }
+        case WHAIT_GPS:
+                STATE_WHAIT_GPS();
+
+                break;
+
+        case SEND_DATA:
+                STATE_SEND_DATA();
+
+                break;
+        }
 }
-
 
 void UpdateDisplay(){
 
-  display.clearDisplay();
-  display.setCursor(0,0);
+        display.clearDisplay();
+        display.setCursor(0,0);
 
-  display.print("State: ");
-  display.println(String(state));
-  display.display();
+        display.print("State: ");
+        display.println(String(state));
+        display.display();
 
 }
 
+
+
+
 // Interrupt is called once a millisecond, looks for any new GPS data, and stores it
 SIGNAL(TIMER0_COMPA_vect) {
-  //Serial.println("Interrrupt");
-  char c = GPS.read();
-  // if you want to debug, this is a good time to do it!
+        //Serial.println("Interrrupt");
+        char c = GPS.read();
+        // if you want to debug, this is a good time to do it!
 #ifdef UDR0
-  if (GPSECHO)
-    if (c) UDR0 = c;
-    // writing direct to UDR0 is much much faster than Serial.print
-    // but only one character can be written at a time.
+        if (GPSECHO)
+                if (c) UDR0 = c;
+        // writing direct to UDR0 is much much faster than Serial.print
+        // but only one character can be written at a time.
 #endif
 }
 
 void useInterrupt(boolean v) {
-  if (v) {
-    // Timer0 is already used for millis() - we'll just interrupt somewhere
-    // in the middle and call the "Compare A" function above
-    OCR0A = 0xAF;
-    TIMSK0 |= _BV(OCIE0A);
-    usingInterrupt = true;
-  } else {
-    // do not call the interrupt function COMPA anymore
-    TIMSK0 &= ~_BV(OCIE0A);
-    usingInterrupt = false;
-  }
+        if (v) {
+                // Timer0 is already used for millis() - we'll just interrupt somewhere
+                // in the middle and call the "Compare A" function above
+                OCR0A = 0xAF;
+                TIMSK0 |= _BV(OCIE0A);
+                usingInterrupt = true;
+        } else {
+                // do not call the interrupt function COMPA anymore
+                TIMSK0 &= ~_BV(OCIE0A);
+                usingInterrupt = false;
+        }
 }
-
-
 
 void setup(){
 // SETUP SERIAL
-Serial.begin(115200);
-Serial.println("Setup...");
+        Serial.begin(115200);
+        Serial.println("Setup...");
+        Fona3G.begin(115200);
+
+// SETUP SD-Card-Reader
+
+        Serial.print("Initializing SD card..."); //SD Setup
+        if (!SD.begin(53)) {
+                Serial.println("initialization failed!");
+                //while (1);
+        }
+        Serial.println("initialization done.");
+
+// SETUP I/O-PINS
+        pinMode(RST_FONA,OUTPUT); // Fona3G ResetPin
+        pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
+        pinMode(PS_FONA,INPUT); // Fona3G PowerStatePin
+
+        pinMode(GPS_ENABLE,OUTPUT); // Fona3G KeyPin
+        pinMode(GPS_FIX,INPUT); // Fona3G PowerStatePin
+
+        digitalWrite(RST_FONA,HIGH);
+        digitalWrite(KEY_FONA,HIGH);
+        digitalWrite(GPS_ENABLE,HIGH);
 
 // SETUP ADC's
-  ads_A.setGain(GAIN_TWO);        // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
-  ads_B.setGain(GAIN_TWO);
+        ads_A.setGain(GAIN_TWO);  // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
+        ads_B.setGain(GAIN_TWO);
 
-  ads_A.begin();
-  ads_B.begin();
+        ads_A.begin();
+        ads_B.begin();
 
 // SETUP DISPLAY
 
+        display.begin(SSD1306_SWITCHCAPVCC,0x3C);
+        display.setTextSize(1);
+        display.setTextColor(WHITE);
+        display.setCursor(0,0);
+        display.clearDisplay();
 
-display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-display.setTextSize(1);
-display.setTextColor(WHITE);
-display.setCursor(0,0);
-display.clearDisplay();
-
-display.println("Boot...");
-display.display();
-  /* Select the font to use with menu and all font functions */
-//  ssd1306_setFixedFont(ssd1306xled_font6x8);
-  /* Do not init Wire library for Attiny controllers */
-//  ssd1306_128x64_i2c_init();
-
-//  ssd1306_clearScreen();
+        display.println("Boot...");
+        display.display();
 
 // Setup GPS
 
 
-Serial.println("Adafruit GPS library basic test!");
+        Serial.println("Adafruit GPS library basic test!");
 
 // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
-GPS.begin(9600);
+        GPS.begin(9600);
 
 // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
-GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+        GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
 // uncomment this line to turn on only the "minimum recommended" data
 //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
 // For parsing data, we don't suggest using anything but either RMC only or RMC+GGA since
 // the parser doesn't care about other sentences at this time
 
 // Set the update rate
-GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
+        GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // 1 Hz update rate
 // For the parsing code to work nicely and have time to sort thru the data, and
 // print it out we don't suggest using anything higher than 1 Hz
 
 // Request updates on antenna status, comment out to keep quiet
-GPS.sendCommand(PGCMD_ANTENNA);
+        GPS.sendCommand(PGCMD_ANTENNA);
 
 // the nice thing about this code is you can have a timer0 interrupt go off
 // every 1 millisecond, and read data from the GPS for you. that makes the
 // loop code a heck of a lot easier!
-useInterrupt(true);
+        useInterrupt(true);
 
-OCR0A = 0xAF;
-TIMSK0 |= _BV(OCIE0A);
+        OCR0A = 0xAF;
+        TIMSK0 |= _BV(OCIE0A);
 
-delay(1000);
+        delay(1000);
 // Ask for firmware version
-UltGps.println(PMTK_Q_RELEASE);
+        UltGps.println(PMTK_Q_RELEASE);
 
 
 }
 
 void loop() {
 
-state_machine_run();
-Serial.println("MainLoop.");
-UpdateDisplay();
+        state_machine_run();
+        UpdateDisplay();
 
 }
