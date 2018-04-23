@@ -90,7 +90,7 @@ const char* SN3_AE = "NO_AE";
 const char* InfluxDB_Server_IP = "130.149.67.141";
 const int InfluxDB_Server_Port = 8086;
 const char* InfluxDB_Database = "ALPHASENSE";
-char MEASUREMENT_NAME[34] = "alphasense_mobil_1";  //(+ Sensornummer)
+char MEASUREMENT_NAME[34] = "fona3_sdlong2";  //(+ Sensornummer)
 
 int linesinfile = 0;
 
@@ -120,7 +120,7 @@ float getUmrechnungsfaktor(){
 }
 
 void writeLineToFile(String line){
-myFile = SD.open("data.txt", FILE_WRITE);
+myFile = SD.open("DATA.txt", FILE_WRITE);
 
 // if the file opened okay, write to it:
 if (myFile) {
@@ -305,9 +305,10 @@ void STATE_MEASURING(){
 
 
 
-        if (linesinfile > 4) {
+        if (linesinfile > 20) {
           Serial.println("Uploading!");
           state = SEND_DATA;
+          linesinfile = 0;
           return;
         }
 
@@ -361,9 +362,11 @@ void STATE_SEND_DATA(){
    delay(15000);
 
    Parser("AT+CHTTPSSTART", 1000);
-   Parser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", 1000);
+    Parser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", 1000);  // InfluxDB
+  // Parser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", 1000);     // Test TCP-Server
 
-SendFromSD();
+//SendFromSD();
+SendLongSD();
 
 ATCOM("AT+CHTTPSSEND", 1500);
 ATCOM("AT+CHTTPSRECV=88", 1000);
