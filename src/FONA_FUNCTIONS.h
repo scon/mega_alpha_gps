@@ -216,7 +216,7 @@ unsigned long BytesToTransmit = 0;
 }
 
 
-void CommandWithAnswer(String command, String answer, int ser_timeout) {
+void CommandWithAnswer(String command, String answer,  unsigned long ser_timeout) {
 
   String Response = "";
 
@@ -261,7 +261,7 @@ void CommandWithAnswer(String command, String answer, int ser_timeout) {
   }
 }
 
-void WaitForString(String answer, int ser_timeout) {
+void WaitForString(String answer,  unsigned long ser_timeout) {
 
   Serial.println("Warte auf String: " + answer );
 
@@ -301,7 +301,7 @@ void WaitForString(String answer, int ser_timeout) {
   }
 }
 
-void WaitForChar(char answer, int ser_timeout) {
+void WaitForChar(char answer, unsigned long ser_timeout) {
 
   Serial.print("Warte auf Char:");
   Serial.write(answer);

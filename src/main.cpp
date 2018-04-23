@@ -10,9 +10,15 @@
 #define GPS_ENABLE 4
 #define GPS_FIX 2
 
+#define PUMP 46
+
 enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, SLEEP};
 
 uint8_t state = INIT;
+
+//I2C libs
+#include <Wire.h>
+
 
 // SD-Card-Reader
 
@@ -25,7 +31,6 @@ File myFile;
 Adafruit_GPS GPS(&UltGps);
 boolean usingInterrupt = true;
 #define GPSECHO  false
-
 
 // Time calculations
 #include <Time.h>
@@ -42,11 +47,15 @@ Adafruit_SSD1306 display(OLED_RESET);
 #include "nano_gfx.h"
 #include "font6x8.h"
 
+//BME280 Sensor
+#include <BME280I2C.h>
+
+BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
+                  // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
+
+
 //ADS 1115 libs
 #include <Adafruit_ADS1015.h>
-
-//I2C libs
-#include <Wire.h>
 
 //GeoHash libs
 #include <arduino-geohash.h>
@@ -62,6 +71,15 @@ float Umrechnungsfaktor;
 float SN1_value, SN2_value, SN3_value, Temp_value;      // globale ADC Variablen
 float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Display
 
+
+// Batteryvoltage
+float battery_fona = 0;
+float battery_solar = 0;
+float v_ref = 4.996;
+float conversion_factor = v_ref / 1023;
+
+
+
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
 const int Messwerte_Mittel = 1; // Anzahl der Messungen, die zu einem einzelnen Messwert gemittelt werden
@@ -73,7 +91,10 @@ unsigned long measurement_timer = 0;
 unsigned long measurement_timeout = 8000;
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
+unsigned long data_upload = 0;
 
+int linesinfile = 0;
+int max_linesinfile = 200;
 
 unsigned long counter = 0;
 
@@ -92,7 +113,7 @@ const int InfluxDB_Server_Port = 8086;
 const char* InfluxDB_Database = "ALPHASENSE";
 char MEASUREMENT_NAME[34] = "fona3_sdlong2";  //(+ Sensornummer)
 
-int linesinfile = 0;
+
 
 String DisplayState = "";
 String Uploadstring = "";
@@ -101,6 +122,15 @@ String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash =
 
 // Fona3G Functions
 #include <FONA_FUNCTIONS.h>
+
+void PumpOn(){
+  digitalWrite(PUMP,HIGH);
+  }
+  void PumpOff(){
+    digitalWrite(PUMP,LOW);
+    }
+
+
 
 float getUmrechnungsfaktor(){
         float Faktor;
@@ -148,7 +178,7 @@ void generateUploadString(){
                 "geohash_fine="   + Geohash_fine   + "," +
                 "geohash_normal=" + Geohash_normal + "," +
                 "geohash_coarse=" + Geohash_coarse +
-                " " +                                     // Leerzeichen trennt Tags und Fields
+                " " +                                     // Leerzeichen trennt Tags und Fields!
 
                 //Messwerte
                 SN1 +    "=" + String(SN1_value, 4) + "," +
@@ -159,10 +189,18 @@ void generateUploadString(){
                 SN2_AE + "=" + String(SN2_AE_value, 4) + "," +
                 SN3_AE + "=" + String(SN3_AE_value, 4) + "," +
 
+                //Batteryvoltage & Data
+                "bat_solar=" + String(battery_solar) + "," +
+                "bat_mod="   + String(battery_fona) + "," +
+                "data_upload=" + String(data_upload) + "," +
+
                 //Position & Speed
                 "lng=" + String(GPS.longitudeDegrees, 4) + "," +
                 "lat=" + String(GPS.latitudeDegrees, 4) + "," +
-                "speed=" + (GPS.speed * 1.852) +   " " +   // Knots to km/h
+                "speed=" + (GPS.speed * 1.852) +  // Knots to km/h
+
+                " " +                                    // Leerzeichen trennt Fields und Timestamp
+
                 String(now());
 
 }
@@ -177,6 +215,7 @@ void STATE_INIT(){
 }
 
 void STATE_WHAIT_GPS(){
+  PumpOff();
         Serial.println("Waiting for GPS-fix...");
         if (GPS.newNMEAreceived()) {
                 GPS.parse(GPS.lastNMEA());
@@ -192,6 +231,8 @@ void STATE_WHAIT_GPS(){
 }
 
 void STATE_MEASURING(){
+
+  PumpOn();
 
         float SN1_Integral = 0;
         float SN2_Integral = 0;
@@ -282,6 +323,9 @@ void STATE_MEASURING(){
         Geohash_normal = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
         Geohash_coarse = hasher_coarse.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
 
+        battery_solar = (analogRead(4) * conversion_factor * 1.5);
+        battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+
 
 
         setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
@@ -289,6 +333,7 @@ void STATE_MEASURING(){
         //Serial.print("NOW:"); Serial.println (now());
 
         generateUploadString();
+        data_upload += Uploadstring.length();
 
         Serial.println("DONE");
         linesinfile += 1;
@@ -305,10 +350,11 @@ void STATE_MEASURING(){
 
 
 
-        if (linesinfile > 20) {
+        if (linesinfile >= max_linesinfile) {
           Serial.println("Uploading!");
           state = SEND_DATA;
           linesinfile = 0;
+          data_upload = 0;
           return;
         }
 
@@ -349,6 +395,8 @@ void STATE_MEASURING(){
 }
 
 void STATE_SEND_DATA(){
+
+  PumpOff();
 
         Serial.println("SENDING DATA...");
 
@@ -414,6 +462,13 @@ void UpdateDisplay(){
 
         display.print("State: ");
         display.println(String(state));
+
+        display.print("V_Bat: ");
+        display.println(String(battery_solar));
+
+        display.print("V_FG3: ");
+        display.println(String(battery_fona));
+
         display.display();
 
 }
@@ -463,6 +518,15 @@ void setup(){
         }
         Serial.println("initialization done.");
 
+
+        Wire.begin();
+
+if(!bme.begin())
+{
+  Serial.println("Could not find BME280 sensor!");
+  delay(1000);
+}
+
 // SETUP I/O-PINS
         pinMode(RST_FONA,OUTPUT); // Fona3G ResetPin
         pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
@@ -474,6 +538,9 @@ void setup(){
         digitalWrite(RST_FONA,HIGH);
         digitalWrite(KEY_FONA,HIGH);
         digitalWrite(GPS_ENABLE,HIGH);
+
+        pinMode(PUMP,OUTPUT); // Fona3G KeyPin
+        digitalWrite(PUMP,LOW);
 
 // SETUP ADC's
         ads_A.setGain(GAIN_TWO);  // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
