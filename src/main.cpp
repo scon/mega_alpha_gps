@@ -53,7 +53,6 @@ Adafruit_SSD1306 display(OLED_RESET);
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
                   // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
 
-
 //ADS 1115 libs
 #include <Adafruit_ADS1015.h>
 
@@ -71,14 +70,11 @@ float Umrechnungsfaktor;
 float SN1_value, SN2_value, SN3_value, Temp_value;      // globale ADC Variablen
 float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Display
 
-
 // Batteryvoltage
 float battery_fona = 0;
 float battery_solar = 0;
 float v_ref = 4.996;
 float conversion_factor = v_ref / 1023;
-
-
 
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
@@ -88,13 +84,14 @@ const int MessDelay = MessInterval / Messwerte_Mittel; /* Pause zwischen Messung
 unsigned long time;
 unsigned long millis_time;
 unsigned long measurement_timer = 0;
-unsigned long measurement_timeout = 8000;
+unsigned long measurement_timeout = 60000;
+
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
 unsigned long data_upload = 0;
 
 int linesinfile = 0;
-int max_linesinfile = 200;
+int max_linesinfile = 60;
 
 unsigned long counter = 0;
 
@@ -193,6 +190,13 @@ void generateUploadString(){
                 "bat_solar=" + String(battery_solar) + "," +
                 "bat_mod="   + String(battery_fona) + "," +
                 "data_upload=" + String(data_upload) + "," +
+
+                //BME280
+                "BME_h=" + String(bme.hum()) + "," +
+                "BME_T=" + String(bme.temp()) + "," +
+                "BME_P=" + String(bme.pres()) + "," +
+
+
 
                 //Position & Speed
                 "lng=" + String(GPS.longitudeDegrees, 4) + "," +
@@ -468,6 +472,9 @@ void UpdateDisplay(){
 
         display.print("V_FG3: ");
         display.println(String(battery_fona));
+
+        display.print("Temp: ");
+        display.println(String(bme.temp()));
 
         display.display();
 
