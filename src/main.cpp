@@ -19,9 +19,10 @@ uint8_t state = INIT;
 //I2C libs
 #include <Wire.h>
 
+//Low-Power
+#include "LowPower.h"
 
 // SD-Card-Reader
-
 #include <SPI.h>
 #include <SD.h>
 File myFile;
@@ -73,8 +74,15 @@ float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Displ
 // Batteryvoltage
 float battery_fona = 0;
 float battery_solar = 0;
-float v_ref = 4.996;
+float v_ref = 5.4;
 float conversion_factor = v_ref / 1023;
+
+// Accelerometer
+int acc_X =0;
+int acc_Y =0;
+int acc_Z =0;
+
+int acc_offset = 345;
 
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
@@ -215,10 +223,42 @@ void STATE_INIT(){
         Serial.println("Init_State:");
         Serial.println("Nothing to do so far...starting Measurement!");
 
-        state = MEASURING;
+        display.println("Init..");
+        display.display();
+        delay(1000);
+
+        state = SEND_DATA;
 }
 
+void STATE_SLEEP(){
+
+
+battery_solar = (analogRead(4) * conversion_factor * 1.5);
+battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+
+LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+
+if (battery_solar > 3.5) {
+  state = INIT;
+}
+
+delay(100);
+
+  // ATmega2560
+//LowPower.powerDown(SLEEP_8S, ADC_OFF, TIMER5_OFF, TIMER4_OFF, TIMER3_OFF,
+//		  TIMER2_OFF, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART3_OFF,
+//		  USART2_OFF, USART1_OFF, USART0_OFF, TWI_OFF);
+//
+
+// LowPower.powerDown(SLEEP_60MS, ADC_OFF, BOD_OFF);
+
+
+}
+
+
+
 void STATE_WHAIT_GPS(){
+
   PumpOff();
         Serial.println("Waiting for GPS-fix...");
         if (GPS.newNMEAreceived()) {
@@ -289,6 +329,9 @@ void STATE_MEASURING(){
 
                 //Messung();
                 //Serial.println(String(SN1_value));
+                battery_solar = (analogRead(4) * conversion_factor * 1.5);
+                battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+                UpdateDisplay();
         }
 
         last_geohash = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
@@ -352,7 +395,9 @@ void STATE_MEASURING(){
         writeLineToFile(Uploadstring);
 
 
-
+        if (battery_solar < 3.2) {
+          state = SLEEP;
+        }
 
         if (linesinfile >= max_linesinfile) {
           Serial.println("Uploading!");
@@ -456,6 +501,11 @@ void state_machine_run()
                 STATE_SEND_DATA();
 
                 break;
+
+        case SLEEP:
+                STATE_SLEEP();
+
+                break;
         }
 }
 
@@ -476,11 +526,17 @@ void UpdateDisplay(){
         display.print("Temp: ");
         display.println(String(bme.temp()));
 
+        display.print("LiF: ");
+        display.println(String(linesinfile) + "/" + String(max_linesinfile));
+
+        display.print("X:"); display.print(String(acc_X));
+        display.print("Y:"); display.print(String(acc_Y));
+        display.print("Z:"); display.println(String(acc_Z));
+
+
         display.display();
 
 }
-
-
 
 
 // Interrupt is called once a millisecond, looks for any new GPS data, and stores it
@@ -495,6 +551,7 @@ SIGNAL(TIMER0_COMPA_vect) {
         // but only one character can be written at a time.
 #endif
 }
+
 
 void useInterrupt(boolean v) {
         if (v) {
@@ -516,7 +573,23 @@ void setup(){
         Serial.println("Setup...");
         Fona3G.begin(115200);
 
+        // SETUP DISPLAY
+
+                display.begin(SSD1306_SWITCHCAPVCC,0x3C);
+                display.setTextSize(1);
+                display.setTextColor(WHITE);
+                display.setCursor(0,0);
+                display.clearDisplay();
+
+                display.println("Boot...");
+                display.display();
+                delay(1000);
+
 // SETUP SD-Card-Reader
+
+display.println("SD...");
+display.display();
+delay(1000);
 
         Serial.print("Initializing SD card..."); //SD Setup
         if (!SD.begin(53)) {
@@ -526,6 +599,10 @@ void setup(){
         Serial.println("initialization done.");
 
 
+
+        display.println("BME280...");
+        display.display();
+        delay(1000);
         Wire.begin();
 
 if(!bme.begin())
@@ -534,6 +611,10 @@ if(!bme.begin())
   delay(1000);
 }
 
+
+display.println("I/O-Pins...");
+display.display();
+delay(1000);
 // SETUP I/O-PINS
         pinMode(RST_FONA,OUTPUT); // Fona3G ResetPin
         pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
@@ -549,6 +630,10 @@ if(!bme.begin())
         pinMode(PUMP,OUTPUT); // Fona3G KeyPin
         digitalWrite(PUMP,LOW);
 
+        display.println("Setup ADCs...");
+        display.display();
+        delay(1000);
+
 // SETUP ADC's
         ads_A.setGain(GAIN_TWO);  // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
         ads_B.setGain(GAIN_TWO);
@@ -556,20 +641,11 @@ if(!bme.begin())
         ads_A.begin();
         ads_B.begin();
 
-// SETUP DISPLAY
-
-        display.begin(SSD1306_SWITCHCAPVCC,0x3C);
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.setCursor(0,0);
-        display.clearDisplay();
-
-        display.println("Boot...");
-        display.display();
-
 // Setup GPS
 
-
+display.println("Start GPS...");
+display.display();
+delay(1000);
         Serial.println("Adafruit GPS library basic test!");
 
 // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
@@ -602,12 +678,24 @@ if(!bme.begin())
 // Ask for firmware version
         UltGps.println(PMTK_Q_RELEASE);
 
+        display.println("Done...");
+        display.display();
+        delay(3000);
 
 }
 
 void loop() {
 
         state_machine_run();
+
+        battery_solar = (analogRead(4) * conversion_factor * 1.5);
+        battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+
+        acc_X = (analogRead(12)-acc_offset);
+        acc_Y = (analogRead(10)-acc_offset);
+        acc_Z = (analogRead(8)-acc_offset);
+
+
         UpdateDisplay();
 
 }
