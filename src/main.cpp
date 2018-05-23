@@ -128,6 +128,8 @@ String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash =
 // Fona3G Functions
 #include <FONA_FUNCTIONS.h>
 
+void UpdateDisplay();
+
 void PumpOn(){
   digitalWrite(PUMP,HIGH);
   }
