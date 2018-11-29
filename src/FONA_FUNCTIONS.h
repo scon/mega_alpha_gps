@@ -119,6 +119,9 @@ void QuickConnectToNetwork() {
   Serial.println("Connecting...");
   //Serial.println("Sending...AT");
   Parser("AT", 500);
+
+  Parser("AT+CPIN=\"4804\"", 500);
+
   //Serial.println("Sending...AT+CREG?");
   Parser("AT+CREG?", 500);
   //Serial.println("Sending...AT+CREG=1");
@@ -126,7 +129,9 @@ void QuickConnectToNetwork() {
   //Serial.println("Sending...AT+CGATT=1");
   Parser("AT+CGATT=1", 1000);
   //Serial.println("Sending...AT+CGSOCKCONT=1...");
-  Parser("AT+CGSOCKCONT=1,\"IP\",\"web.vodafone.de\"", 2000);
+  Parser("AT+CGSOCKCONT=1,\"IP\",\"internet.telekom\"", 2000);
+  Parser("AT+CSOCKAUTH=1,1,\"congstar\",\"cs\"",500);
+
   //Serial.println("Sending...AT+CSOCKSETPN");
   Parser("AT+CSOCKSETPN=1", 3000);
   //Serial.println("Sending...AT+NETOPEN");
@@ -474,5 +479,5 @@ void SendLongSD() {
 
   WaitSerialData(500);
   Parser("AT+CHTTPSSEND", 500);
-  ATCOM("AT+CHTTPSRECV=300", 500);
+  ATCOM("AT+CHTTPSRECV=1023", 500);
 }

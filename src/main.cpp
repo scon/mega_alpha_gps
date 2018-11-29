@@ -10,9 +10,10 @@
 #define GPS_ENABLE 4
 #define GPS_FIX 2
 
+#define MODE_SWITCH  9
 #define PUMP 46
 
-enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, SLEEP};
+enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, SLEEP, SLEEP_ACC};
 
 uint8_t state = INIT;
 
@@ -48,12 +49,6 @@ Adafruit_SSD1306 display(OLED_RESET);
 #include "nano_gfx.h"
 #include "font6x8.h"
 
-//BME280 Sensor
-#include <BME280I2C.h>
-
-BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
-                  // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
-
 //ADS 1115 libs
 #include <Adafruit_ADS1015.h>
 
@@ -65,6 +60,13 @@ GeoHash hasher_fine(9);
 
 Adafruit_ADS1115 ads_A(0x48);
 Adafruit_ADS1115 ads_B(0x49);
+
+//BME280 Sensor
+#include <BME280I2C.h>
+
+BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
+                  // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
+
 
 float Umrechnungsfaktor;
 
@@ -82,7 +84,21 @@ int acc_X =0;
 int acc_Y =0;
 int acc_Z =0;
 
+int acc_X_last =0;
+int acc_Y_last =0;
+int acc_Z_last =0;
+
+int acc_X_abs =0;
+int acc_Y_abs =0;
+int acc_Z_abs =0;
+
 int acc_offset = 345;
+
+bool acc_flag = false;
+bool acc_timer_flag = false;
+
+unsigned long acc_timer= 0;
+unsigned long acc_sleep_timeout=30000;
 
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
@@ -92,14 +108,14 @@ const int MessDelay = MessInterval / Messwerte_Mittel; /* Pause zwischen Messung
 unsigned long time;
 unsigned long millis_time;
 unsigned long measurement_timer = 0;
-unsigned long measurement_timeout = 60000;
+unsigned long measurement_timeout = 10000;
 
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
 unsigned long data_upload = 0;
 
 int linesinfile = 0;
-int max_linesinfile = 60;
+int max_linesinfile = 100;
 
 unsigned long counter = 0;
 
@@ -133,11 +149,16 @@ void UpdateDisplay();
 void PumpOn(){
   digitalWrite(PUMP,HIGH);
   }
-  void PumpOff(){
-    digitalWrite(PUMP,LOW);
-    }
+void PumpOff(){
+  digitalWrite(PUMP,LOW);
+  }
 
-
+void GpsOn(){
+  digitalWrite(GPS_ENABLE,HIGH);
+  }
+void GpsOff(){
+  digitalWrite(GPS_ENABLE,LOW);
+  }
 
 float getUmrechnungsfaktor(){
         float Faktor;
@@ -228,19 +249,24 @@ void STATE_INIT(){
         display.println("Init..");
         display.display();
         delay(1000);
+        GpsOn();
+        PumpOn();
 
         state = SEND_DATA;
 }
 
 void STATE_SLEEP(){
 
+GpsOff();
+PumpOff();
+ModemTurnOff();
 
 battery_solar = (analogRead(4) * conversion_factor * 1.5);
 battery_fona =  (analogRead(6) * conversion_factor * 1.5);
 
 LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
 
-if (battery_solar > 3.5) {
+if (battery_solar > 3.7) {
   state = INIT;
 }
 
@@ -257,11 +283,43 @@ delay(100);
 
 }
 
+void STATE_SLEEP_ACC(){
+
+GpsOff();
+PumpOff();
+ModemTurnOff();
+
+LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+
+delay(100);
+
+if (acc_timer_flag == true){
+// Werte müssen neu gelesen werden, da das abschalten der Pumpe sonst am ACC_ADC eine Spannungsänderung erzeugt, die als Bewegung missinterpretiert wird!
+acc_timer_flag = false;
+
+acc_X = (analogRead(12));
+acc_Y = (analogRead(10));
+acc_Z = (analogRead(8));
+
+acc_X_last = acc_X;
+acc_Y_last = acc_Y;
+acc_Z_last = acc_Z;
+
+}
+
+if (acc_flag == true) {
+state = INIT;
+acc_flag = false;
+
+}
+
+}
+
 
 
 void STATE_WHAIT_GPS(){
 
-  PumpOff();
+  //PumpOff();
         Serial.println("Waiting for GPS-fix...");
         if (GPS.newNMEAreceived()) {
                 GPS.parse(GPS.lastNMEA());
@@ -288,6 +346,9 @@ void STATE_MEASURING(){
         float SN1_AE_Integral = 0;
         float SN2_AE_Integral = 0;
         float SN3_AE_Integral = 0;
+
+        float battery_solar_Integral = 0;
+        float battery_fona_Integral = 0;
 
         int measurement_counter = 0;
 
@@ -318,21 +379,22 @@ void STATE_MEASURING(){
                 // Abrufen der Analogeinganswerte am ADS1115
                 // Abrufen der an den Pins anliegenden Werte
                 measurement_counter += 1;
+
                 //ADC_A
-                SN1_AE_Integral+=ads_A.readADC_SingleEnded(1); // NO2   Aux 1
-                SN2_AE_Integral+=ads_A.readADC_SingleEnded(2); // O3/NO Aux 2
-                SN3_AE_Integral+=ads_A.readADC_SingleEnded(3); // NO    Aux 3
+                SN1_Integral+=ads_A.readADC_SingleEnded(1); // NO2   Work 1
+                SN2_Integral+=ads_A.readADC_SingleEnded(2); // O3/NO Work 2
+                SN3_Integral+=ads_A.readADC_SingleEnded(3); // NO    Work 3
                 TEMP_Integral  +=ads_A.readADC_SingleEnded(0);// PT+
 
                 //ADC_B
-                SN1_Integral+=ads_B.readADC_SingleEnded(1); // NO2   Work 1
-                SN2_Integral+=ads_B.readADC_SingleEnded(2); // O3/NO Work 2
-                SN3_Integral+=ads_B.readADC_SingleEnded(3); // NO    Work 3
+                SN1_AE_Integral+=ads_B.readADC_SingleEnded(1); // NO2   Aux 1
+                SN2_AE_Integral+=ads_B.readADC_SingleEnded(2); // O3/NO Aux 2
+                SN3_AE_Integral+=ads_B.readADC_SingleEnded(3); // NO    Aux 3
 
                 //Messung();
                 //Serial.println(String(SN1_value));
-                battery_solar = (analogRead(4) * conversion_factor * 1.5);
-                battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+                battery_solar_Integral += (analogRead(4) * conversion_factor * 1.5);
+                battery_fona_Integral +=  (analogRead(6) * conversion_factor * 1.5);
                 UpdateDisplay();
         }
 
@@ -372,10 +434,8 @@ void STATE_MEASURING(){
         Geohash_normal = hasher_normal.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
         Geohash_coarse = hasher_coarse.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
 
-        battery_solar = (analogRead(4) * conversion_factor * 1.5);
-        battery_fona =  (analogRead(6) * conversion_factor * 1.5);
-
-
+        battery_solar = battery_solar_Integral / measurement_counter;
+        battery_fona =  battery_fona_Integral / measurement_counter;
 
         setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
 
@@ -397,7 +457,7 @@ void STATE_MEASURING(){
         writeLineToFile(Uploadstring);
 
 
-        if (battery_solar < 3.2) {
+        if (battery_solar < 3.4) {
           state = SLEEP;
         }
 
@@ -456,19 +516,20 @@ void STATE_SEND_DATA(){
    delay(15000);
 
    QuickConnectToNetwork();
-   QuickConnectToNetwork();
+   //QuickConnectToNetwork();
 
    delay(15000);
 
    Parser("AT+CHTTPSSTART", 1000);
-    Parser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", 1000);  // InfluxDB
-  // Parser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", 1000);     // Test TCP-Server
+  Parser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", 1000);  // InfluxDB
+  //Parser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", 1000);     // Test TCP-Server
 
 //SendFromSD();
 SendLongSD();
+linesinfile = 0;
 
-ATCOM("AT+CHTTPSSEND", 1500);
-ATCOM("AT+CHTTPSRECV=88", 1000);
+//ATCOM("AT+CHTTPSSEND", 1500);
+//ATCOM("AT+CHTTPSRECV=88", 1000);
 ATCOM("AT+CHTTPSCLSE", 500);
 ATCOM("AT+CHTTPSSTOP", 500);
 
@@ -508,6 +569,9 @@ void state_machine_run()
                 STATE_SLEEP();
 
                 break;
+        case SLEEP_ACC:
+                STATE_SLEEP_ACC();
+                break;
         }
 }
 
@@ -531,9 +595,9 @@ void UpdateDisplay(){
         display.print("LiF: ");
         display.println(String(linesinfile) + "/" + String(max_linesinfile));
 
-        display.print("X:"); display.print(String(acc_X));
-        display.print("Y:"); display.print(String(acc_Y));
-        display.print("Z:"); display.println(String(acc_Z));
+        display.print("X:"); display.print(String(acc_X_abs));
+        display.print("Y:"); display.print(String(acc_Y_abs));
+        display.print("Z:"); display.println(String(acc_Z_abs));
 
 
         display.display();
@@ -574,6 +638,7 @@ void setup(){
         Serial.begin(115200);
         Serial.println("Setup...");
         Fona3G.begin(115200);
+              Wire.begin();
 
         // SETUP DISPLAY
 
@@ -605,7 +670,7 @@ delay(1000);
         display.println("BME280...");
         display.display();
         delay(1000);
-        Wire.begin();
+
 
 if(!bme.begin())
 {
@@ -622,12 +687,15 @@ delay(1000);
         pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
         pinMode(PS_FONA,INPUT); // Fona3G PowerStatePin
 
-        pinMode(GPS_ENABLE,OUTPUT); // Fona3G KeyPin
-        pinMode(GPS_FIX,INPUT); // Fona3G PowerStatePin
+        pinMode(GPS_ENABLE,OUTPUT); // GPS_EnablePin
+        pinMode(GPS_FIX,INPUT); // GPS_FixOutputPin
+        pinMode(LED_BUILTIN, OUTPUT); // Debug LED
 
         digitalWrite(RST_FONA,HIGH);
         digitalWrite(KEY_FONA,HIGH);
         digitalWrite(GPS_ENABLE,HIGH);
+
+        pinMode(MODE_SWITCH,INPUT_PULLUP);
 
         pinMode(PUMP,OUTPUT); // Fona3G KeyPin
         digitalWrite(PUMP,LOW);
@@ -687,16 +755,45 @@ delay(1000);
 }
 
 void loop() {
+  int acc_X_diff, acc_Y_diff, acc_Z_diff;
 
         state_machine_run();
 
         battery_solar = (analogRead(4) * conversion_factor * 1.5);
-        battery_fona =  (analogRead(6) * conversion_factor * 1.5);
+        battery_fona  =  (analogRead(6) * conversion_factor * 1.5);
 
-        acc_X = (analogRead(12)-acc_offset);
-        acc_Y = (analogRead(10)-acc_offset);
-        acc_Z = (analogRead(8)-acc_offset);
+        acc_X_last = acc_X;
+        acc_Y_last = acc_Y;
+        acc_Z_last = acc_Z;
 
+        acc_X = (analogRead(12));
+        acc_Y = (analogRead(10));
+        acc_Z = (analogRead(8));
+
+        acc_X_diff = acc_X - acc_X_last;
+        acc_Y_diff = acc_Y - acc_Y_last;
+        acc_Z_diff = acc_Z - acc_Z_last;
+
+        acc_X_abs = abs(acc_X_diff);
+        acc_Y_abs = abs(acc_Y_diff);
+        acc_Z_abs = abs(acc_Z_diff);
+
+        float vektor = sqrt(sq(acc_X_abs)+sq(acc_Y_abs)+sq(acc_Y_abs));
+
+        if (vektor > 7)  {
+          digitalWrite(LED_BUILTIN, HIGH);
+          acc_timer = millis();
+          acc_flag = true;
+        }
+        else{
+          digitalWrite(LED_BUILTIN, LOW);
+          acc_flag = false;
+        }
+
+        if ((millis() - acc_timer > acc_sleep_timeout) && (state != 5) && (digitalRead(MODE_SWITCH)==LOW)) {
+          state = SLEEP_ACC;
+          acc_timer_flag = true;
+        }
 
         UpdateDisplay();
 
