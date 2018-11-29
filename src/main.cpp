@@ -507,7 +507,7 @@ void STATE_MEASURING(){
 
 void STATE_SEND_DATA(){
 
-  PumpOff();
+  // PumpOff();
 
         Serial.println("SENDING DATA...");
 
