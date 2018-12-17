@@ -115,7 +115,7 @@ unsigned long gps_timeout = 7000;
 unsigned long data_upload = 0;
 
 int linesinfile = 0;
-int max_linesinfile = 100;
+int max_linesinfile = 25;
 
 unsigned long counter = 0;
 
