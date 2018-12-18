@@ -289,7 +289,7 @@ int SendSequence(String FileToSend) {
     }
   }
 
-  while (sendWithCheck("DATA5.TXT") == 0) {
+  while (sendWithCheck(FileToSend) == 0) {
     FailedUpload++;
 
     if (FailedUpload > 4) {
