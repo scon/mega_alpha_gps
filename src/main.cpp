@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <avr/wdt.h>
 
 #define Fona3G Serial1
 #define UltGps Serial2
@@ -12,6 +13,7 @@
 
 #define MODE_SWITCH  9
 #define PUMP 46
+#define VERTER_ENABLE 31
 
 //I2C libs
 #include <Wire.h>
@@ -182,14 +184,35 @@ void STATE_INIT(){
         Serial.println("Init_State:");
         Serial.println("Nothing to do so far...");
         Serial.println("Next State: TRANS_SLEEP");
+GpsOff();
+        UpdateAccelerometerReadings(7);
 
-        display.println("Init..");
-        display.display();
-        delay(1000);
-        GpsOn();
-        PumpOn();
 
         state = TRANS_SLEEP;
+
+        unsigned long start_millis = millis();
+
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.println("Checking ACC...");
+        display.display();
+        delay(500);
+
+        while((millis()-start_millis<20000)){
+          display.setCursor(0, 8);
+          display.println(String((millis()-start_millis)));
+          display.display();
+
+          if (UpdateAccelerometerReadings(7)) {
+
+            display.println("Measuring...");
+            display.display();
+            state = MEASURING;
+            break;
+
+          }
+        }
+
 }
 
 void STATE_CHARGE(){
@@ -226,12 +249,18 @@ void STATE_SLEEP(){
         PumpOff();
         ModemTurnOff();
 
-        LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
+        digitalWrite(VERTER_ENABLE, LOW);
+
+        LowPower.powerDown(SLEEP_8S,ADC_OFF,BOD_OFF);
 
         delay(100);
 
         if (acc_flag == true) {
-                state = MEASURING;
+                //state = MEASURING;
+                wdt_enable(WDTO_15MS);   // Watchdog auf 1 s stellen
+                while(1);
+
+
         }
 
 }
@@ -463,6 +492,10 @@ void STATE_TRANSIT_SLEEP(){
 
 
 void setup(){
+// VERTER_ENABLE PIN
+pinMode(VERTER_ENABLE,OUTPUT);
+digitalWrite(VERTER_ENABLE, HIGH);
+
 // SETUP SERIAL
         Serial.begin(115200);
         Serial.println("Setup...");
@@ -479,13 +512,13 @@ void setup(){
 
         display.println("Boot...");
         display.display();
-        delay(1000);
+        delay(500);
 
 // SETUP SD-Card-Reader
 
         display.println("SD...");
         display.display();
-        delay(1000);
+        delay(500);
 
         Serial.print("Initializing SD card..."); //SD Setup
         if (!SD.begin(53)) {
@@ -498,19 +531,19 @@ void setup(){
 
         display.println("BME280...");
         display.display();
-        delay(1000);
+        delay(500);
 
 
         if(!bme.begin())
         {
                 Serial.println("Could not find BME280 sensor!");
-                delay(1000);
+                delay(500);
         }
 
 
         display.println("I/O-Pins...");
         display.display();
-        delay(1000);
+        delay(500);
 // SETUP I/O-PINS
         pinMode(RST_FONA,OUTPUT); // Fona3G ResetPin
         pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
@@ -531,7 +564,7 @@ void setup(){
 
         display.println("Setup ADCs...");
         display.display();
-        delay(1000);
+        delay(500);
 
 // SETUP ADC's
         ads_A.setGain(GAIN_TWO);  // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
@@ -544,7 +577,7 @@ void setup(){
 
         display.println("Start GPS...");
         display.display();
-        delay(1000);
+        delay(500);
         Serial.println("Adafruit GPS library basic test!");
 
 // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
@@ -573,13 +606,13 @@ void setup(){
         OCR0A = 0xAF;
         TIMSK0 |= _BV(OCIE0A);
 
-        delay(1000);
+        delay(500);
 // Ask for firmware version
         UltGps.println(PMTK_Q_RELEASE);
 
         display.println("Done...");
         display.display();
-        delay(3000);
+        delay(500);
 
 }
 
