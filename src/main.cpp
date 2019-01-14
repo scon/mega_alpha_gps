@@ -102,7 +102,7 @@ bool acc_flag = false;
 bool acc_timer_flag = false;
 
 unsigned long acc_timer= 0;
-unsigned long acc_sleep_timeout=30000;
+unsigned long acc_sleep_timeout=120000;
 
 // Config Messung
 const int MessInterval = 20; // Zeit in ms zwischen den einzelnen gemittelten Messwerten
@@ -263,7 +263,7 @@ void STATE_SLEEP(){
 
         digitalWrite(VERTER_ENABLE,LOW);
 
-        LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
+        LowPower.powerDown(SLEEP_8S,ADC_OFF,BOD_OFF);
 
 
         if (acc_flag == true) {
