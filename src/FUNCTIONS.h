@@ -10,6 +10,9 @@ bool CheckBattery(){
 }
 
 bool CheckAccelerometerTimer(){
+  if (digitalRead(9)==LOW){
+    acc_timer = millis();
+  }
 
         if (millis() - acc_timer > acc_sleep_timeout) {
                 return false;

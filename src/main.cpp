@@ -26,6 +26,11 @@
 #include <SD.h>
 File myFile;
 
+// VON MAX
+File sendFile;
+File restFile;
+File dataFile;
+
 // GPS
 #include <Adafruit_GPS.h>
 Adafruit_GPS GPS(&UltGps);
@@ -181,10 +186,17 @@ void useInterrupt(boolean v) {
 
 void STATE_INIT(){
 
+        // Debug SD Functions
+        //divideFile(20);
+        //restToNewDataFile();
+        //divideFile(20);
+
+
         Serial.println("Init_State:");
         Serial.println("Nothing to do so far...");
+        //Serial.println(String(divideFile(20)));
         Serial.println("Next State: TRANS_SLEEP");
-GpsOff();
+        GpsOff();
         UpdateAccelerometerReadings(7);
 
 
@@ -193,24 +205,25 @@ GpsOff();
         unsigned long start_millis = millis();
 
         display.clearDisplay();
-        display.setCursor(0, 0);
+        display.setCursor(0,0);
         display.println("Checking ACC...");
         display.display();
         delay(500);
 
-        while((millis()-start_millis<20000)){
-          display.setCursor(0, 8);
-          display.println(String((millis()-start_millis)));
-          display.display();
+        while((millis()-start_millis<20000)) {
+                display.clearDisplay();
+                display.setCursor(0,8);
+                display.println(String((millis()-start_millis)));
+                display.display();
 
-          if (UpdateAccelerometerReadings(7)) {
+                if (UpdateAccelerometerReadings(7)) {
 
-            display.println("Measuring...");
-            display.display();
-            state = MEASURING;
-            break;
+                        display.println("Measuring...");
+                        display.display();
+                        state = MEASURING;
+                        break;
 
-          }
+                }
         }
 
 }
@@ -247,13 +260,11 @@ void STATE_SLEEP(){
 
         GpsOff();
         PumpOff();
-        ModemTurnOff();
 
-        digitalWrite(VERTER_ENABLE, LOW);
+        digitalWrite(VERTER_ENABLE,LOW);
 
-        LowPower.powerDown(SLEEP_8S,ADC_OFF,BOD_OFF);
+        LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
 
-        delay(100);
 
         if (acc_flag == true) {
                 //state = MEASURING;
@@ -459,14 +470,37 @@ void STATE_MEASURING(){
 
 void STATE_SEND_DATA(){
 
-        // PumpOff();
+        int divide_flag= 0;
+
+        PumpOff();
 
         Serial.println("SENDING DATA...");
 
         ModemTurnOn();
 
-        SendSequence("DATA.TXT");
+        if (EstablishConnection()==0) {
+                state = TRANS_SLEEP;
+                Serial.println("going to sleep");
 
+                return;
+        }
+        Serial.println("Connection Established");
+        do {
+                Serial.println("Dividing");
+                divide_flag=divideFile(20);
+
+                if(SendSequence("SEND.TXT")!=0) {
+                        SD.remove("DATA.txt");
+                        restToNewDataFile();
+                }
+                else{
+                        break;
+                }
+
+                /* code */
+        } while(divide_flag != 0);
+
+        CloseSession();
         ModemTurnOff();
 
         if (CheckAccelerometerTimer() == false) {
@@ -493,8 +527,8 @@ void STATE_TRANSIT_SLEEP(){
 
 void setup(){
 // VERTER_ENABLE PIN
-pinMode(VERTER_ENABLE,OUTPUT);
-digitalWrite(VERTER_ENABLE, HIGH);
+        pinMode(VERTER_ENABLE,OUTPUT);
+        digitalWrite(VERTER_ENABLE,HIGH);
 
 // SETUP SERIAL
         Serial.begin(115200);

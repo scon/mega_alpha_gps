@@ -113,7 +113,7 @@ int sendWithCheck(String Filename) {
     Serial.println("error opening file!");
   }
   // Compose HEADER
-  header = "POST /write?db=ALPHASENSE HTTP/1.1\r\n";
+  header = "POST /write?db=ALPHASENSE&precision=s HTTP/1.1\r\n";
   header += "Host: Fona3G\r\n";
   header += "User-Agent: Fona3G\r\n";
   header += "Accept: */*\r\n";
@@ -253,8 +253,8 @@ int QuickConnect() {
   AdvancedParser("AT+CHTTPSSTART", "OK", "", "", 5000);
 
 
-  if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", "OK", "", "", 5000) == 1) {   // Test TCP-Server
-  //if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", "OK", "", "", 5000) == 1) {   //  InfluxDB
+  //if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", "OK", "", "", 5000) == 1) {   // Test TCP-Server
+  if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", "OK", "", "", 5000) == 1) {   //  InfluxDB
   return 1;
 }
 else {
@@ -266,11 +266,8 @@ else {
 
 }
 
-
-int SendSequence(String FileToSend) {
+int EstablishConnection(){
   int FailedConnection = 0;
-  int FailedUpload = 0;
-
   ResetBoard();
 
   AdvancedParser("", "+CPIN: SIM PIN", "", "", 10000);
@@ -288,6 +285,12 @@ int SendSequence(String FileToSend) {
       return 0;
     }
   }
+  return 1;
+}
+
+int SendSequence(String FileToSend) {
+
+  int FailedUpload = 0;
 
   while (sendWithCheck(FileToSend) == 0) {
     FailedUpload++;
@@ -298,7 +301,131 @@ int SendSequence(String FileToSend) {
     }
       }
     Serial.println("Upload complete");
-    CloseSession();
     return 1;
+}
 
+
+int divideFile(int n) {
+  if(SD.exists("SEND.txt")) {
+    SD.remove("SEND.txt");
+  }
+  if(SD.exists("REST.txt")) {
+    SD.remove("REST.txt");
+  }
+
+  if(SD.exists("DATA.txt")) {
+   dataFile = SD.open("DATA.txt", FILE_READ);
+   sendFile = SD.open("SEND.txt", FILE_WRITE);
+
+   if(dataFile) {
+     int linebreak = 0;
+     char c[256] = "";
+     while(dataFile.available()) {
+       if(linebreak < n) {
+         for (size_t i = 0; i < 256; i++) {
+           c[i] = dataFile.read();
+           if(c[i] == '\n') {
+             linebreak++;
+             if(linebreak == n) {
+               c[i+1] = '\0';
+               break;
+             }
+           }
+           if(c[i] == (char)-1) {
+             c[i] = '\0';
+             break;
+           }
+         }
+         for (size_t k = 0; k < 256; k++) {
+           if (c[k] != '\0') {
+             sendFile.write(c[k]);
+           } else {
+             break;
+           }
+         }
+       } else {
+         if(!restFile) {
+           sendFile.close();
+           restFile = SD.open("REST.txt", FILE_WRITE);
+           /*for (size_t i = 0; i < 256; i++) {
+             c[i] = (char)0;
+           }*/
+           c[0] = '\0';
+         }
+         for (size_t i = 0; i<256; i++) {
+           c[i] = dataFile.read();
+           if(c[i] == (char)-1) {
+             c[i] = '\0';
+             break;
+           }
+         }
+         for (size_t j = 0; j < 256; j++) {
+          if (c[j] != '\0') {
+            restFile.write(c[j]);
+          } else {
+            break;
+          }
+         }
+       }
+     }
+     dataFile.close();
+     restFile.close();
+     if(SD.exists("REST.txt")) {
+       return 1;
+     } else {
+       sendFile.close();
+       return 0;
+     }
+   } else {
+     Serial.println("Couldn't open DATA.txt or SEND.txt!");
+     sendFile.close();
+     dataFile.close();
+     return -1;
+   }
+ } else {
+   Serial.println("No data file!");
+   return -1;
+ }
+}
+
+int restToNewDataFile() {
+  char c[256] = "";
+  if(SD.exists("REST.txt")) {
+    restFile = SD.open("REST.txt", FILE_READ);
+    if(restFile) {
+      if(SD.exists("DATA.txt")) {
+        SD.remove("DATA.txt");
+      }
+      dataFile = SD.open("DATA.txt", FILE_WRITE);
+      while(restFile.available()) {
+        for (size_t i = 0; i < 256; i++) {
+          c[i] = restFile.read();
+          if(c[i] == (char)-1) {
+            c[i] = '\0';
+            break;
+          }
+        }
+        for (size_t j = 0; j < 256; j++) {
+          if(c[j] != '\0') {
+            dataFile.write(c[j]);
+          } else {
+            break;
+          }
+        }
+      }
+      dataFile.close();
+      restFile.close();
+      if(SD.exists("DATA.txt")) {
+        SD.remove("REST.txt");
+        return 1;
+      }
+      return 0;
+    } else {
+      Serial.println("Couldn't open REST.txt!");
+      return -1;
+    }
+  } else {
+    Serial.println("No REST file to update from!");
+    return -1;
+  }
 }
