@@ -139,7 +139,7 @@ const char* SN3_AE = "NO_AE";
 const char* InfluxDB_Server_IP = "130.149.67.141";
 const int InfluxDB_Server_Port = 8086;
 const char* InfluxDB_Database = "ALPHASENSE";
-char MEASUREMENT_NAME[34] = "fona3_sdlong2";  //(+ Sensornummer)
+char MEASUREMENT_NAME[34] = "fona3_sdlong3";  //(+ Sensornummer)
 
 enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLEEP};
 
