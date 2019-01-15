@@ -81,9 +81,12 @@ float battery_fona = 0;
 float battery_solar = 0;
 float v_ref = 5.4;
 float conversion_factor = v_ref / 1023;
-float battery_threshold = 3.4;
+float battery_threshold = 3.2;
 
 // Accelerometer
+
+float acc_vektor=0;
+
 int acc_X =0;
 int acc_Y =0;
 int acc_Z =0;
@@ -216,7 +219,7 @@ void STATE_INIT(){
                 display.println(String((millis()-start_millis)));
                 display.display();
 
-                if (UpdateAccelerometerReadings(7)) {
+                if (UpdateAccelerometerReadings(8)) {
 
                         display.println("Measuring...");
                         display.display();
@@ -260,10 +263,11 @@ void STATE_SLEEP(){
 
         GpsOff();
         PumpOff();
+        ModemTurnOff();
 
         digitalWrite(VERTER_ENABLE,LOW);
 
-        LowPower.powerDown(SLEEP_8S,ADC_OFF,BOD_OFF);
+        LowPower.powerDown(SLEEP_2S,ADC_OFF,BOD_OFF);
 
 
         if (acc_flag == true) {

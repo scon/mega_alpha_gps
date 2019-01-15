@@ -46,8 +46,9 @@ bool UpdateAccelerometerReadings(int acc_threshold){
         acc_X_abs = abs(acc_X_diff);
         acc_Y_abs = abs(acc_Y_diff);
         acc_Z_abs = abs(acc_Z_diff);
+        acc_vektor = 0;
 
-        float acc_vektor = sqrt(sq(acc_X_abs)+sq(acc_Y_abs)+sq(acc_Y_abs));
+        acc_vektor = sqrt(sq(acc_X_abs)+sq(acc_Y_abs)+sq(acc_Y_abs));
 
         if (acc_vektor > acc_threshold)  {
                 acc_timer = millis();
@@ -145,6 +146,7 @@ void generateUploadString(){
                 //Position & Speed
                 "lng=" + String(GPS.longitudeDegrees, 4) + "," +
                 "lat=" + String(GPS.latitudeDegrees, 4) + "," +
+                "acc_v=" + String(acc_vektor, 4) + "," +
                 "speed=" + (GPS.speed * 1.852) +  // Knots to km/h
 
                 " " +                                    // Leerzeichen trennt Fields und Timestamp
@@ -176,9 +178,10 @@ void UpdateDisplay(){
         display.print("ACC_T: ");
         display.println(String(millis() -acc_timer) + "/" + String(acc_sleep_timeout));
 
-        display.print("X:"); display.print(String(acc_X_abs));
-        display.print("Y:"); display.print(String(acc_Y_abs));
-        display.print("Z:"); display.println(String(acc_Z_abs));
+        //display.print("X:"); display.print(String(acc_X_abs));
+        //display.print("Y:"); display.print(String(acc_Y_abs));
+        //display.print("Z:"); display.println(String(acc_Z_abs));
+        display.print("V:"); display.println(String(acc_vektor));
 
 
         display.display();
