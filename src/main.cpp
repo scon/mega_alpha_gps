@@ -694,6 +694,6 @@ void state_machine_run()
 void loop() {
         state_machine_run();
         UpdateBatteryVoltageRaeadings();
-        acc_flag = UpdateAccelerometerReadings(7);
+        acc_flag = UpdateAccelerometerReadings(11);
         UpdateDisplay();
 }
