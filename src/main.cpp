@@ -14,6 +14,12 @@
 #define MODE_SWITCH  9
 #define PUMP 46
 #define VERTER_ENABLE 31
+#define POM
+
+#define ACC_MOVEMENT_PIN 10
+#define ACC_SHUTDOWN_PIN 11
+
+
 
 //I2C libs
 #include <Wire.h>
@@ -141,7 +147,7 @@ const int InfluxDB_Server_Port = 8086;
 const char* InfluxDB_Database = "ALPHASENSE";
 char MEASUREMENT_NAME[34] = "fona3_sdlong3";  //(+ Sensornummer)
 
-enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLEEP};
+enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLEEP, TELEMETRY};
 
 uint8_t state = INIT;
 
@@ -200,33 +206,11 @@ void STATE_INIT(){
         //Serial.println(String(divideFile(20)));
         Serial.println("Next State: TRANS_SLEEP");
         GpsOff();
-        UpdateAccelerometerReadings(7);
 
-
-        state = TRANS_SLEEP;
-
-        unsigned long start_millis = millis();
-
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.println("Checking ACC...");
-        display.display();
-        delay(500);
-
-        while((millis()-start_millis<20000)) {
-                display.clearDisplay();
-                display.setCursor(0,8);
-                display.println(String((millis()-start_millis)));
-                display.display();
-
-                if (UpdateAccelerometerReadings(8)) {
-
-                        display.println("Measuring...");
-                        display.display();
-                        state = MEASURING;
-                        break;
-
-                }
+        if (digitalRead(ACC_MOVEMENT_PIN)==HIGH) {
+          state = MEASURING;
+        } else {
+          state = TELEMETRY;
         }
 
 }
@@ -462,7 +446,7 @@ void STATE_MEASURING(){
                 Serial.print("NOW:"); Serial.println (now());
         }
 
-        if (CheckAccelerometerTimer() == false) {
+        if (digitalRead(ACC_MOVEMENT_PIN) == LOW) {
                 state = SEND_DATA;
         }
 
@@ -507,13 +491,12 @@ void STATE_SEND_DATA(){
         CloseSession();
         ModemTurnOff();
 
-        if (CheckAccelerometerTimer() == false) {
-                state = TRANS_SLEEP;
-        }
+        state = TRANS_SLEEP;
 
-        if (CheckBattery() == false) {
-                state =  CHARGE;
-        }
+
+        //if (CheckBattery() == false) {
+        //        state =  CHARGE;
+        //}
 }
 
 void STATE_TRANSIT_SLEEP(){
@@ -522,17 +505,26 @@ void STATE_TRANSIT_SLEEP(){
         PumpOff();
         ModemTurnOff();
 
-        UpdateAccelerometerReadings(7); // Eventuelle Spannungsschwankung durch das Abschalten der Pumpe, etc. ausgleichen.
-
         state = SLEEP;
 
+}
+void STATE_TELEMETRY(){
+  state = SLEEP;
 }
 
 
 void setup(){
+
+// EXTERNAL_ACC_PINS
+pinMode(ACC_MOVEMENT_PIN,INPUT);
+pinMode(ACC_SHUTDOWN_PIN,OUTPUT);
+digitalWrite(ACC_SHUTDOWN_PIN,LOW);
+
+
 // VERTER_ENABLE PIN
         pinMode(VERTER_ENABLE,OUTPUT);
         digitalWrite(VERTER_ENABLE,HIGH);
+
 
 // SETUP SERIAL
         Serial.begin(115200);
@@ -685,6 +677,9 @@ void state_machine_run()
         case TRANS_SLEEP:
                 STATE_TRANSIT_SLEEP();
                 break;
+                case TELEMETRY:
+                        STATE_TELEMETRY();
+                        break;
         }
 }
 
