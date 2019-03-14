@@ -13,11 +13,11 @@
 
 #define MODE_SWITCH  9
 #define PUMP 46
-#define VERTER_ENABLE 31
+
 #define POM
 
-#define ACC_MOVEMENT_PIN 10
-#define ACC_SHUTDOWN_PIN 11
+#define ACC_MOVEMENT_PIN 30
+#define ACC_SHUTDOWN_PIN 31
 
 
 
@@ -85,7 +85,7 @@ float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Displ
 // Batteryvoltage
 float battery_fona = 0;
 float battery_solar = 0;
-float v_ref = 5.4;
+float v_ref = 3.3;
 float conversion_factor = v_ref / 1023;
 float battery_threshold = 3.2;
 
@@ -207,12 +207,19 @@ void STATE_INIT(){
         Serial.println("Next State: TRANS_SLEEP");
         GpsOff();
 
+        for (size_t i = 0; i < 10; i++) {
+          UpdateBatteryVoltageRaeadings();
+        }
+
+
         if (digitalRead(ACC_MOVEMENT_PIN)==HIGH) {
-          state = MEASURING;
+          state = TELEMETRY;
         } else {
           state = TELEMETRY;
         }
 
+ delay(100);
+ //digitalWrite(ACC_SHUTDOWN_PIN,LOW);
 }
 
 void STATE_CHARGE(){
@@ -221,10 +228,9 @@ void STATE_CHARGE(){
         PumpOff();
         ModemTurnOff();
 
-        battery_solar = (analogRead(4) * conversion_factor * 1.5);
-        battery_fona =  (analogRead(6) * conversion_factor * 1.5);
 
-        LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
+
+        //LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
 
         if (battery_solar > 3.7) {
                 state = INIT;
@@ -243,27 +249,6 @@ void STATE_CHARGE(){
 
 }
 
-void STATE_SLEEP(){
-
-        GpsOff();
-        PumpOff();
-        ModemTurnOff();
-
-        digitalWrite(VERTER_ENABLE,LOW);
-
-        LowPower.powerDown(SLEEP_2S,ADC_OFF,BOD_OFF);
-
-
-        if (acc_flag == true) {
-                //state = MEASURING;
-                wdt_enable(WDTO_15MS);   // Watchdog auf 1 s stellen
-                while(1);
-
-
-        }
-
-}
-
 void STATE_WHAIT_GPS(){
 
         //PumpOff();
@@ -277,7 +262,7 @@ void STATE_WHAIT_GPS(){
                 state = MEASURING;
         }
 
-        if (CheckAccelerometerTimer() == false) {
+        if (digitalRead(ACC_MOVEMENT_PIN) == LOW) {
                 state = SEND_DATA;
         }
 
@@ -349,8 +334,8 @@ void STATE_MEASURING(){
 
                         //Messung();
                         //Serial.println(String(SN1_value));
-                        battery_solar_Integral += (analogRead(4) * conversion_factor * 1.5);
-                        battery_fona_Integral +=  (analogRead(6) * conversion_factor * 1.5);
+                        battery_solar_Integral += (analogRead(4) * conversion_factor *2) ;
+                        battery_fona_Integral +=  (analogRead(6) * conversion_factor * 2);
                         UpdateDisplay();
                         UpdateAccelerometerReadings(7);
                 }
@@ -466,7 +451,7 @@ void STATE_SEND_DATA(){
 
         ModemTurnOn();
 
-        if (EstablishConnection()==0) {
+        if (EstablishConnection("87.123.157.161","1900")==0) {
                 state = TRANS_SLEEP;
                 Serial.println("going to sleep");
 
@@ -499,6 +484,35 @@ void STATE_SEND_DATA(){
         //}
 }
 
+void STATE_TELEMETRY(){
+Serial.println("Telemetry");
+display.clearDisplay();
+display.println("TELEMETRY");
+display.display();
+
+Serial.println("SENDING TELEMETRY...");
+
+ModemTurnOn();
+
+delay(300);
+
+if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
+        state = TRANS_SLEEP;
+        Serial.println("going to sleep");
+
+        return;
+}
+  //TELEMETRY CODE GOES HERE
+  String TelemetryString = "{\"Solar\" :" + String(battery_solar)+ ", \"Fona\" : " + String(battery_fona)+ ", \"Temp\" : " + String(bme.temp()) + " }\n";
+
+  Parser("AT+CHTTPSSEND="+ String(TelemetryString.length()), 500);
+  Fona3G.print(TelemetryString);
+  Parser("AT+CHTTPSSEND", 500);
+  delay(300);
+  CloseSession();
+  state = SLEEP;
+}
+
 void STATE_TRANSIT_SLEEP(){
 
         GpsOff();
@@ -508,10 +522,17 @@ void STATE_TRANSIT_SLEEP(){
         state = SLEEP;
 
 }
-void STATE_TELEMETRY(){
-  state = SLEEP;
-}
 
+
+void STATE_SLEEP(){
+
+        GpsOff();
+        PumpOff();
+        ModemTurnOff();
+
+        digitalWrite(ACC_SHUTDOWN_PIN, HIGH);
+
+}
 
 void setup(){
 
@@ -520,10 +541,9 @@ pinMode(ACC_MOVEMENT_PIN,INPUT);
 pinMode(ACC_SHUTDOWN_PIN,OUTPUT);
 digitalWrite(ACC_SHUTDOWN_PIN,LOW);
 
+// Set 3.3V as AREF
+analogReference(EXTERNAL);
 
-// VERTER_ENABLE PIN
-        pinMode(VERTER_ENABLE,OUTPUT);
-        digitalWrite(VERTER_ENABLE,HIGH);
 
 
 // SETUP SERIAL
@@ -531,7 +551,7 @@ digitalWrite(ACC_SHUTDOWN_PIN,LOW);
         Serial.println("Setup...");
         Fona3G.begin(115200);
         Wire.begin();
-
+Serial.println("Setup...2");
         // SETUP DISPLAY
 
         display.begin(SSD1306_SWITCHCAPVCC,0x3C);
@@ -689,6 +709,6 @@ void state_machine_run()
 void loop() {
         state_machine_run();
         UpdateBatteryVoltageRaeadings();
-        acc_flag = UpdateAccelerometerReadings(11);
+        //acc_flag = UpdateAccelerometerReadings(11);
         UpdateDisplay();
 }

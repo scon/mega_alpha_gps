@@ -240,7 +240,7 @@ int sendWithCheck(String Filename) {
   //ATCOM("AT+CHTTPSRECV=300", 500);
 }
 
-int QuickConnect() {
+int QuickConnect(String server_ip, String server_port) {
 
   AdvancedParser("AT+CREG?", "OK", "", "", 5000);
   AdvancedParser("AT+CREG=1", "+CREG: 1", "", "", 10000);
@@ -254,7 +254,7 @@ int QuickConnect() {
 
 
   //if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", "OK", "", "", 5000) == 1) {   // Test TCP-Server
-  if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.141\",8086,1", "OK", "", "", 5000) == 1) {   //  InfluxDB
+  if (AdvancedParser("AT+CHTTPSOPSE=\""+ server_ip + "\"," + server_port + ",1", "OK", "", "", 5000) == 1) {   //  InfluxDB
   return 1;
 }
 else {
@@ -266,7 +266,7 @@ else {
 
 }
 
-int EstablishConnection(){
+int EstablishConnection(String server_ip, String server_port){
   int FailedConnection = 0;
   ResetBoard();
 
@@ -277,7 +277,7 @@ int EstablishConnection(){
     return 0;
   }
 
-  while (QuickConnect() == 0) {
+  while (QuickConnect(server_ip,server_port) == 0) {
     FailedConnection++;
 
     if (FailedConnection > 4) {

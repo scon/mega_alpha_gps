@@ -24,8 +24,17 @@ bool CheckAccelerometerTimer(){
 }
 
 void UpdateBatteryVoltageRaeadings(){
-        battery_solar = (analogRead(4) * conversion_factor * 1.5);
-        battery_fona  =  (analogRead(6) * conversion_factor * 1.5);
+  float avg_solar, avg_fona =0;
+
+
+        //battery_solar = (analogRead(6));
+        //battery_fona  =  (analogRead(4));
+
+        avg_solar = ((analogRead(6) * conversion_factor *2) );
+        avg_fona =  ((analogRead(4) * conversion_factor *2) );
+        battery_solar = (battery_solar + avg_solar)/2;
+        battery_fona = (battery_fona + avg_fona)/2;
+
 }
 
 bool UpdateAccelerometerReadings(int acc_threshold){
