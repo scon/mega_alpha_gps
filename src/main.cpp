@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/wdt.h>
+#include <ArduinoJson.h>
 
 #define Fona3G Serial1
 #define UltGps Serial2
@@ -502,6 +503,41 @@ if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
 
         return;
 }
+/* String something = "";
+for (size_t i = 0; i < 50; i++) {
+  something = "{\"testvalue\" :" + String(i)+ "}";
+  writeLineToFile(something, "dummy.txt");
+}
+*/
+
+/*
+String SendBuffer = "";
+// open the file for counting Bytes:
+myFile = SD.open("DUMMY.TXT");
+
+Serial.println("Reading File: Dummy");
+if (myFile) {
+  // read from the file until there's nothing in it:
+  while (myFile.available()) {
+    char c = myFile.read();
+    SendBuffer += (c);
+
+      if (c == '\n') {
+
+      AdvancedParser("AT+CHTTPSSEND="+ String(SendBuffer.length()),"OK","","", 10);
+      Fona3G.print(SendBuffer);
+      Serial.print(SendBuffer);
+      //Parser("AT+CHTTPSSEND", 500);
+      AdvancedParser("AT+CHTTPSSEND", "OK", "", "", 500);
+      SendBuffer = "";
+
+    }
+
+  }
+}
+  // close the file:
+  myFile.close();
+*/
   //TELEMETRY CODE GOES HERE
   String TelemetryString = "{\"Solar\" :" + String(battery_solar)+ ", \"Fona\" : " + String(battery_fona)+ ", \"Temp\" : " + String(bme.temp()) + " }\n";
 
@@ -512,6 +548,7 @@ if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
   CloseSession();
   state = SLEEP;
 }
+
 
 void STATE_TRANSIT_SLEEP(){
 
@@ -666,8 +703,7 @@ Serial.println("Setup...2");
 
 }
 
-void state_machine_run()
-{
+void state_machine_run(){
         switch(state)
         {
         case INIT:

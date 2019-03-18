@@ -163,6 +163,43 @@ void generateUploadString(){
                 String(now());
 
 }
+String generateJSONString(){
+  String OutputString = "";
+
+DynamicJsonDocument doc(1024);
+doc["key"] = "value";
+doc["raw"] = "value2";
+doc["hour"] = String(GPS.hour);
+doc["minute"]= String(GPS.minute);
+doc["geohashf="]=Geohash_fine;
+
+doc[SN1]=String(SN1_value, 4);
+doc[SN2]=String(SN2_value, 4);
+doc[SN3]=String(SN3_value, 4);
+doc[SN1_AE]=String(SN1_AE_value, 4);
+doc[SN2_AE]=String(SN2_AE_value, 4);
+doc[SN3_AE]=String(SN3_AE_value, 4);
+doc[TEMP]=String(Temp_value, 4);
+
+doc["bat_solar"]=String(battery_solar);
+doc["bat_mod"]=String(battery_fona);
+doc["data_upload"]=String(data_upload);
+doc["BME_h"]=String(bme.hum());
+doc["BME_T"]=String(bme.temp());
+doc["BME_P"]=String(bme.pres());
+doc["lng"]=String(GPS.longitudeDegrees, 4);
+doc["lat"]=String(GPS.latitudeDegrees, 4);
+doc["acc_v"]=String(acc_vektor, 4);
+doc["speed"]=(GPS.speed * 1.852); // Knots to km/h
+doc["time"]= String(now());
+
+serializeJson(doc, OutputString);
+
+return OutputString;
+
+}
+
+
 
 void UpdateDisplay(){
 
