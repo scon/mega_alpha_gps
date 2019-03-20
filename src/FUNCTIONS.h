@@ -10,16 +10,6 @@ bool CheckBattery(){
 }
 
 bool CheckAccelerometerTimer(){
-  if (digitalRead(9)==LOW){
-    acc_timer = millis();
-  }
-
-        if (millis() - acc_timer > acc_sleep_timeout) {
-                return false;
-        }
-        else{
-                return true;
-        }
 
 }
 
@@ -163,38 +153,51 @@ void generateUploadString(){
                 String(now());
 
 }
+
+float round_to_dp( float in_value, int decimal_place )
+{
+float multiplier = powf( 10.0f, decimal_place );
+in_value = roundf( in_value * multiplier ) / multiplier;
+return in_value;
+}
+
 String generateJSONString(){
   String OutputString = "";
 
-DynamicJsonDocument doc(1024);
-doc["key"] = "value";
-doc["raw"] = "value2";
-doc["hour"] = String(GPS.hour);
-doc["minute"]= String(GPS.minute);
-doc["geohashf="]=Geohash_fine;
+DynamicJsonDocument doc(2000);
 
-doc[SN1]=String(SN1_value, 4);
-doc[SN2]=String(SN2_value, 4);
-doc[SN3]=String(SN3_value, 4);
-doc[SN1_AE]=String(SN1_AE_value, 4);
-doc[SN2_AE]=String(SN2_AE_value, 4);
-doc[SN3_AE]=String(SN3_AE_value, 4);
-doc[TEMP]=String(Temp_value, 4);
+JsonObject fields=doc.createNestedObject();
 
-doc["bat_solar"]=String(battery_solar);
-doc["bat_mod"]=String(battery_fona);
-doc["data_upload"]=String(data_upload);
-doc["BME_h"]=String(bme.hum());
-doc["BME_T"]=String(bme.temp());
-doc["BME_P"]=String(bme.pres());
-doc["lng"]=String(GPS.longitudeDegrees, 4);
-doc["lat"]=String(GPS.latitudeDegrees, 4);
-doc["acc_v"]=String(acc_vektor, 4);
-doc["speed"]=(GPS.speed * 1.852); // Knots to km/h
-doc["time"]= String(now());
+fields["type"] = "data";
+fields[SN1]=round_to_dp(SN1_value, 2);
+fields[SN2]=round_to_dp(SN2_value, 2);
+fields[SN3]=round_to_dp(SN3_value, 2);
+fields[SN1_AE]=round_to_dp(SN1_AE_value, 2);
+fields[SN2_AE]=round_to_dp(SN2_AE_value, 2);
+fields[SN3_AE]=round_to_dp(SN3_AE_value, 2);
+fields[TEMP]=round_to_dp(Temp_value, 2);
+
+fields["bat_solar"]=round_to_dp(battery_solar,2);
+fields["bat_mod"]=round_to_dp(battery_fona,2);
+fields["data_upload"]=data_upload;
+fields["BME_h"]=round_to_dp(bme.hum(),2);
+fields["BME_T"]=round_to_dp(bme.temp(),2);
+fields["BME_P"]=round_to_dp(bme.pres(),2);
+fields["lng"]=String(GPS.longitudeDegrees, 4);
+fields["lat"]=String(GPS.latitudeDegrees, 4);
+fields["acc_v"]=String(acc_vektor, 4);
+fields["speed"]=round_to_dp((GPS.speed * 1.852),2); // Knots to km/h
+fields["time"]= String(now());
+
+JsonObject tags=doc.createNestedObject();
+
+tags["hour"] = String(GPS.hour);
+tags["minute"]= String(GPS.minute);
+tags["geohash"]=Geohash_fine;
+tags["BME_T"]=round_to_dp(bme.temp(),2);
 
 serializeJson(doc, OutputString);
-
+Serial.println(OutputString);
 return OutputString;
 
 }

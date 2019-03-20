@@ -205,7 +205,7 @@ void STATE_INIT(){
         Serial.println("Init_State:");
         Serial.println("Nothing to do so far...");
         //Serial.println(String(divideFile(20)));
-        Serial.println("Next State: TRANS_SLEEP");
+
         GpsOff();
 
         for (size_t i = 0; i < 10; i++) {
@@ -214,8 +214,12 @@ void STATE_INIT(){
 
 
         if (digitalRead(ACC_MOVEMENT_PIN)==HIGH) {
-          state = TELEMETRY;
+          state = MEASURING;
         } else {
+          state = TELEMETRY;
+        }
+
+        if (digitalRead(MODE_SWITCH)==HIGH){
           state = TELEMETRY;
         }
 
@@ -224,28 +228,6 @@ void STATE_INIT(){
 }
 
 void STATE_CHARGE(){
-
-        GpsOff();
-        PumpOff();
-        ModemTurnOff();
-
-
-
-        //LowPower.powerDown(SLEEP_1S,ADC_OFF,BOD_OFF);
-
-        if (battery_solar > 3.7) {
-                state = INIT;
-        }
-
-        delay(100);
-
-        // ATmega2560
-//LowPower.powerDown(SLEEP_8S, ADC_OFF, TIMER5_OFF, TIMER4_OFF, TIMER3_OFF,
-//		  TIMER2_OFF, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART3_OFF,
-//		  USART2_OFF, USART1_OFF, USART0_OFF, TWI_OFF);
-//
-
-// LowPower.powerDown(SLEEP_60MS, ADC_OFF, BOD_OFF);
 
 
 }
@@ -268,7 +250,7 @@ void STATE_WHAIT_GPS(){
         }
 
         if (CheckBattery() == false) {
-                state =  CHARGE;
+                //state =  CHARGE;
         }
 
 
@@ -304,7 +286,7 @@ void STATE_MEASURING(){
         Serial.println("Start Measurement...");
 
         measurement_timer = millis();
-        entry_geohash = hasher_normal.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
+        entry_geohash = hasher_fine.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
         last_geohash = entry_geohash;
 
         while (last_geohash == entry_geohash && millis() - measurement_timer < measurement_timeout) {
@@ -341,7 +323,7 @@ void STATE_MEASURING(){
                         UpdateAccelerometerReadings(7);
                 }
 
-                last_geohash = hasher_normal.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
+                last_geohash = hasher_fine.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
                 Serial.println("Entry-Geohash: " + entry_geohash);
                 Serial.println("Last-Geohash:  " + last_geohash);
                 Serial.println("Meas.No.:      " + String(measurement_counter));
@@ -384,8 +366,8 @@ void STATE_MEASURING(){
 
         //Serial.print("NOW:"); Serial.println (now());
 
-        generateUploadString();
-        data_upload += Uploadstring.length();
+        //generateUploadString();
+        //data_upload += Uploadstring.length();
 
         Serial.println("DONE");
         linesinfile += 1;
@@ -395,10 +377,13 @@ void STATE_MEASURING(){
         Serial.println("Measurements taken: " + String(measurement_counter));
         Serial.println("Lines in file: " + String(linesinfile));
 
-        Serial.println(Uploadstring);
+        //Serial.println(Uploadstring);
 
-        writeLineToFile(Uploadstring,"DATA.TXT");
-        writeLineToFile(Uploadstring,"LOGFILE.TXT");
+        //writeLineToFile(Uploadstring,"DATA.TXT");
+
+        //writeLineToFile(Uploadstring,"LOGFILE.TXT");
+
+        writeLineToFile(generateJSONString(),"DATA.TXT");
 
         Serial.print("\nTime: ");
         Serial.print(GPS.hour,DEC); Serial.print(':');
@@ -443,6 +428,57 @@ void STATE_MEASURING(){
 }
 
 void STATE_SEND_DATA(){
+  Serial.println("Sending sensordata...");
+  display.clearDisplay();
+  display.println("SENSORDATA");
+  display.display();
+
+  ModemTurnOn();
+  delay(300);
+
+  if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
+          state = TRANS_SLEEP;
+          Serial.println("going to sleep");
+
+          return;
+  }
+
+
+  String SendBuffer = "";
+  // open the file for reading:
+  myFile = SD.open("DATA.TXT");
+
+  Serial.println("Reading File: Data.");
+  if (myFile) {
+    // read from the file until there's nothing in it:
+    while (myFile.available()) {
+      char c = myFile.read();
+      SendBuffer += (c);
+
+        if (c == '\n') {
+
+        AdvancedParser("AT+CHTTPSSEND="+ String(SendBuffer.length()),"OK","","", 10);
+        Fona3G.print(SendBuffer);
+        Serial.print(SendBuffer);
+        //Parser("AT+CHTTPSSEND", 500);
+        AdvancedParser("AT+CHTTPSSEND", "OK", "", "", 500);
+        SendBuffer = "";
+
+      }
+
+    }
+  }
+    // close the file:
+    myFile.close();
+    SD.remove("DATA.txt");
+
+  delay(300);
+  CloseSession();
+  state = SLEEP;
+}
+
+
+void STATE_SEND_DATA_old(){
 
         int divide_flag= 0;
 
@@ -503,43 +539,26 @@ if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
 
         return;
 }
-/* String something = "";
-for (size_t i = 0; i < 50; i++) {
-  something = "{\"testvalue\" :" + String(i)+ "}";
-  writeLineToFile(something, "dummy.txt");
-}
-*/
 
-/*
-String SendBuffer = "";
-// open the file for counting Bytes:
-myFile = SD.open("DUMMY.TXT");
-
-Serial.println("Reading File: Dummy");
-if (myFile) {
-  // read from the file until there's nothing in it:
-  while (myFile.available()) {
-    char c = myFile.read();
-    SendBuffer += (c);
-
-      if (c == '\n') {
-
-      AdvancedParser("AT+CHTTPSSEND="+ String(SendBuffer.length()),"OK","","", 10);
-      Fona3G.print(SendBuffer);
-      Serial.print(SendBuffer);
-      //Parser("AT+CHTTPSSEND", 500);
-      AdvancedParser("AT+CHTTPSSEND", "OK", "", "", 500);
-      SendBuffer = "";
-
-    }
-
-  }
-}
-  // close the file:
-  myFile.close();
-*/
   //TELEMETRY CODE GOES HERE
-  String TelemetryString = "{\"Solar\" :" + String(battery_solar)+ ", \"Fona\" : " + String(battery_fona)+ ", \"Temp\" : " + String(bme.temp()) + " }\n";
+  // alt String TelemetryString = "{\"type\": \"telemetry\", \"Solar\" :" + String(battery_solar)+ ", \"Fona\" : " + String(battery_fona)+ ", \"Temp\" : " + String(bme.temp()) + " }\n";
+  String TelemetryString = "";
+
+  DynamicJsonDocument tel(512);
+
+  JsonObject fields=tel.createNestedObject();
+
+  fields["type"] = "telemetry";
+  fields["Solar"]= round_to_dp(battery_solar,2);
+  fields["Fona"]= round_to_dp(battery_fona,2);
+  fields["Temp"]= round_to_dp(bme.temp(),2);
+
+  JsonObject tags=tel.createNestedObject();
+
+  tags["testtag"]= bme.temp();
+
+  serializeJson(tel, TelemetryString);
+  TelemetryString += '\n';
 
   Parser("AT+CHTTPSSEND="+ String(TelemetryString.length()), 500);
   Fona3G.print(TelemetryString);
