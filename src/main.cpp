@@ -20,7 +20,8 @@
 #define ACC_MOVEMENT_PIN 30
 #define ACC_SHUTDOWN_PIN 31
 
-
+#define ADC_BAT_SOLAR 6
+#define ADC_BAT_FONA 4
 
 //I2C libs
 #include <Wire.h>
@@ -289,6 +290,18 @@ void STATE_MEASURING(){
         entry_geohash = hasher_fine.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
         last_geohash = entry_geohash;
 
+        //ADC Warmup
+        for (size_t w = 0; w < 5; w++) {
+        ads_A.readADC_SingleEnded(1);
+        ads_A.readADC_SingleEnded(2);
+        ads_A.readADC_SingleEnded(3);
+        ads_A.readADC_SingleEnded(4);
+        ads_B.readADC_SingleEnded(1);
+        ads_B.readADC_SingleEnded(2);
+        ads_B.readADC_SingleEnded(3);
+        ads_B.readADC_SingleEnded(4);
+        }
+
         while (last_geohash == entry_geohash && millis() - measurement_timer < measurement_timeout) {
 
                 gps_timer = millis();
@@ -317,8 +330,8 @@ void STATE_MEASURING(){
 
                         //Messung();
                         //Serial.println(String(SN1_value));
-                        battery_solar_Integral += (analogRead(4) * conversion_factor *2) ;
-                        battery_fona_Integral +=  (analogRead(6) * conversion_factor * 2);
+                        battery_solar_Integral += (analogRead(ADC_BAT_SOLAR) * conversion_factor *2) ;
+                        battery_fona_Integral +=  (analogRead(ADC_BAT_FONA) * conversion_factor * 2);
                         UpdateDisplay();
                         UpdateAccelerometerReadings(7);
                 }
@@ -381,8 +394,8 @@ void STATE_MEASURING(){
 
         //writeLineToFile(Uploadstring,"DATA.TXT");
 
-        //writeLineToFile(Uploadstring,"LOGFILE.TXT");
 
+        writeLineToFile(generateJSONString(),"LOGFILE.TXT");
         writeLineToFile(generateJSONString(),"DATA.TXT");
 
         Serial.print("\nTime: ");
@@ -549,9 +562,9 @@ if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
   JsonObject fields=tel.createNestedObject();
 
   fields["type"] = "telemetry";
-  fields["Solar"]= round_to_dp(battery_solar,2);
-  fields["Fona"]= round_to_dp(battery_fona,2);
-  fields["Temp"]= round_to_dp(bme.temp(),2);
+  fields["bat_solar"]= round_to_dp(battery_solar,2);
+  fields["bat_fona"]= round_to_dp(battery_fona,2);
+  fields["bme_t"]= round_to_dp(bme.temp(),2);
 
   JsonObject tags=tel.createNestedObject();
 

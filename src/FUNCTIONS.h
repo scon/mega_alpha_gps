@@ -20,8 +20,8 @@ void UpdateBatteryVoltageRaeadings(){
         //battery_solar = (analogRead(6));
         //battery_fona  =  (analogRead(4));
 
-        avg_solar = ((analogRead(6) * conversion_factor *2) );
-        avg_fona =  ((analogRead(4) * conversion_factor *2) );
+        avg_solar = ((analogRead(ADC_BAT_SOLAR) * conversion_factor *2) );
+        avg_fona =  ((analogRead(ADC_BAT_FONA) * conversion_factor *2) );
         battery_solar = (battery_solar + avg_solar)/2;
         battery_fona = (battery_fona + avg_fona)/2;
 
@@ -178,21 +178,21 @@ fields[SN3_AE]=round_to_dp(SN3_AE_value, 2);
 fields[TEMP]=round_to_dp(Temp_value, 2);
 
 fields["bat_solar"]=round_to_dp(battery_solar,2);
-fields["bat_mod"]=round_to_dp(battery_fona,2);
+fields["bat_fona"]=round_to_dp(battery_fona,2);
 fields["data_upload"]=data_upload;
-fields["BME_h"]=round_to_dp(bme.hum(),2);
-fields["BME_T"]=round_to_dp(bme.temp(),2);
-fields["BME_P"]=round_to_dp(bme.pres(),2);
+fields["bme_h"]=round_to_dp(bme.hum(),2);
+fields["bme_T"]=round_to_dp(bme.temp(),2);
+fields["bme_P"]=round_to_dp(bme.pres(),2);
 fields["lng"]=String(GPS.longitudeDegrees, 4);
 fields["lat"]=String(GPS.latitudeDegrees, 4);
-fields["acc_v"]=String(acc_vektor, 4);
+fields["acc_v"]=round_to_dp(acc_vektor, 2);
 fields["speed"]=round_to_dp((GPS.speed * 1.852),2); // Knots to km/h
 fields["time"]= String(now());
 
 JsonObject tags=doc.createNestedObject();
 
-tags["hour"] = String(GPS.hour);
-tags["minute"]= String(GPS.minute);
+tags["hour"] = GPS.hour;
+tags["minute"]= GPS.minute;
 tags["geohash"]=Geohash_fine;
 tags["BME_T"]=round_to_dp(bme.temp(),2);
 
