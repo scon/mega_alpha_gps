@@ -101,12 +101,7 @@ void TestParser() {
   Parser("AT", 3000);
 }
 
-void ResetBoard() {
-  digitalWrite(RST_FONA, LOW);
-  delay(200);
-  digitalWrite(RST_FONA, HIGH);
-  Serial.println("Resetting Fona3G...");
-}
+
 
 void EchoOff() {
   ATCOM("ATE0", 500);
