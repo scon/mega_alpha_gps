@@ -565,6 +565,7 @@ if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","19
   fields["bat_solar"]= round_to_dp(battery_solar,2);
   fields["bat_fona"]= round_to_dp(battery_fona,2);
   fields["bme_t"]= round_to_dp(bme.temp(),2);
+  fields["BOD"]= digitalRead(BOD_PIN);
 
   JsonObject tags=tel.createNestedObject();
 

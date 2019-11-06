@@ -188,7 +188,7 @@ fields["lat"]=String(GPS.latitudeDegrees, 4);
 fields["acc_v"]=round_to_dp(acc_vektor, 2);
 fields["speed"]=round_to_dp((GPS.speed * 1.852),2); // Knots to km/h
 fields["time"]= String(now());
-
+fields["BOD"]= digitalRead(BOD_PIN);
 JsonObject tags=doc.createNestedObject();
 
 tags["hour"] = GPS.hour;
