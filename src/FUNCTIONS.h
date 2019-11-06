@@ -181,7 +181,7 @@ fields["bat_solar"]=round_to_dp(battery_solar,2);
 fields["bat_fona"]=round_to_dp(battery_fona,2);
 fields["data_upload"]=data_upload;
 fields["bme_h"]=round_to_dp(bme.hum(),2);
-fields["bme_T"]=round_to_dp(bme.temp(),2);
+fields["bme_t"]=round_to_dp(bme.temp(),2);
 fields["bme_P"]=round_to_dp(bme.pres(),2);
 fields["lng"]=String(GPS.longitudeDegrees, 4);
 fields["lat"]=String(GPS.latitudeDegrees, 4);
@@ -194,7 +194,8 @@ JsonObject tags=doc.createNestedObject();
 tags["hour"] = GPS.hour;
 tags["minute"]= GPS.minute;
 tags["geohash"]=Geohash_fine;
-tags["BME_T"]=round_to_dp(bme.temp(),2);
+tags["bme_t"]=round_to_dp(bme.temp(),2);
+tags["BOD"]= digitalRead(BOD_PIN);
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);

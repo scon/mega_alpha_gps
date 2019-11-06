@@ -19,7 +19,7 @@
 
 #define ACC_MOVEMENT_PIN 30
 #define ACC_SHUTDOWN_PIN 31
-
+#define BOD_PIN 28
 #define ADC_BAT_SOLAR 6
 #define ADC_BAT_FONA 4
 
@@ -449,7 +449,7 @@ void STATE_SEND_DATA(){
   ModemTurnOn();
   delay(300);
 
-  if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
+  if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","1900" "130.149.67.141","4001"
           state = TRANS_SLEEP;
           Serial.println("going to sleep");
 
@@ -546,7 +546,7 @@ ModemTurnOn();
 
 delay(300);
 
-if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
+if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","1900" "130.149.67.141","4001"
         state = TRANS_SLEEP;
         Serial.println("going to sleep");
 
@@ -569,6 +569,7 @@ if (EstablishConnection("heimdall.dedyn.io","1900")==0) {
   JsonObject tags=tel.createNestedObject();
 
   tags["testtag"]= bme.temp();
+  tags["BOD"]= digitalRead(BOD_PIN);
 
   serializeJson(tel, TelemetryString);
   TelemetryString += '\n';
