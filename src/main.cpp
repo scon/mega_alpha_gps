@@ -573,7 +573,6 @@ if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","19
 
   JsonObject tags=tel.createNestedObject();
 
-  tags["testtag"]= bme.temp();
   tags["BOD"]= digitalRead(BOD_PIN);
 
   serializeJson(tel, TelemetryString);
