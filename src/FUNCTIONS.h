@@ -233,6 +233,8 @@ void UpdateDisplay(){
         //display.print("Y:"); display.print(String(acc_Y_abs));
         //display.print("Z:"); display.println(String(acc_Z_abs));
         display.print("V:"); display.println(String(acc_vektor));
+        display.print("Trip:"); display.println(TripID);
+
 
 
         display.display();
