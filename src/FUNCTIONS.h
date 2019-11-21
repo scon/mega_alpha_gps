@@ -196,6 +196,7 @@ tags["minute"]= GPS.minute;
 tags["geohash"]=Geohash_fine;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
+tags["TripID"] = TripID;
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);

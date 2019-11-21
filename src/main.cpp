@@ -156,6 +156,7 @@ uint8_t state = INIT;
 String DisplayState = "";
 String Uploadstring = "";
 String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash ="", entry_geohash ="";
+String TripID = "notset";
 // PROTOTYPES
 
 // Fona3G Functions
@@ -244,6 +245,9 @@ void STATE_WHAIT_GPS(){
         if (GPS.fix) {
                 Serial.println("Got GPS-fix! Switching to MEASURING state!");
                 state = MEASURING;
+                if (TripID = "notset"){
+                  TripID = String(GPS.year) + "-" +String(GPS.month) + "-" + String(GPS.day) +"/" + String(GPS.hour)+":" + String(GPS.minute);
+                  }
         }
 
         if (digitalRead(ACC_MOVEMENT_PIN) == LOW) {
