@@ -164,7 +164,7 @@ return in_value;
 String generateJSONString(){
   String OutputString = "";
 
-DynamicJsonDocument doc(2000);
+DynamicJsonDocument doc(2500);
 
 JsonObject fields=doc.createNestedObject();
 
