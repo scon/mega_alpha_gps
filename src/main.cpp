@@ -216,7 +216,7 @@ void STATE_INIT(){
 
 
         if (digitalRead(ACC_MOVEMENT_PIN)==HIGH) {
-          state = MEASURING;
+          state = WHAIT_GPS;
         } else {
           state = TELEMETRY;
         }
