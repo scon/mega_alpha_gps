@@ -164,7 +164,7 @@ return in_value;
 String generateJSONString(){
   String OutputString = "";
 
-DynamicJsonDocument doc(2500);
+DynamicJsonDocument doc(2000);
 
 JsonObject fields=doc.createNestedObject();
 
@@ -193,7 +193,7 @@ JsonObject tags=doc.createNestedObject();
 
 tags["hour"] = GPS.hour;
 tags["minute"]= GPS.minute;
-tags["geohash"]=Geohash_fine;
+tags["geohash"]= Geohash_fine;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
@@ -232,7 +232,8 @@ void UpdateDisplay(){
         //display.print("X:"); display.print(String(acc_X_abs));
         //display.print("Y:"); display.print(String(acc_Y_abs));
         //display.print("Z:"); display.println(String(acc_Z_abs));
-        display.print("V:"); display.println(String(acc_vektor));
+        //display.print("V:"); display.println(String(acc_vektor));
+        display.print("M:"); display.println(digitalRead(ACC_MOVEMENT_PIN));
         display.print("Trip:"); display.println(TripID);
 
 

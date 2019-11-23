@@ -445,8 +445,9 @@ void STATE_MEASURING(){
 }
 
 void STATE_SEND_DATA(){
-  Serial.println("Sending sensordata...");
   display.clearDisplay();
+  display.setCursor(0,0);
+  Serial.println("Sending sensordata...");
   display.println("SENSORDATA");
   display.display();
 
@@ -539,8 +540,9 @@ void STATE_SEND_DATA_old(){
 }
 
 void STATE_TELEMETRY(){
-Serial.println("Telemetry");
+
 display.clearDisplay();
+display.setCursor(0,0);
 display.println("TELEMETRY");
 display.display();
 
