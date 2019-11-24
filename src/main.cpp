@@ -208,7 +208,7 @@ void STATE_INIT(){
         Serial.println("Nothing to do so far...");
         //Serial.println(String(divideFile(20)));
 
-        GpsOff();
+
 
         for (size_t i = 0; i < 10; i++) {
           UpdateBatteryVoltageRaeadings();
@@ -216,6 +216,8 @@ void STATE_INIT(){
 
 
         if (digitalRead(ACC_MOVEMENT_PIN)==HIGH) {
+          GpsOn();
+          PumpOn();
           state = WHAIT_GPS;
         } else {
           state = TELEMETRY;
@@ -224,6 +226,8 @@ void STATE_INIT(){
         if (digitalRead(MODE_SWITCH)==HIGH){
           state = TELEMETRY;
         }
+
+
 
  delay(100);
  //digitalWrite(ACC_SHUTDOWN_PIN,LOW);
@@ -245,7 +249,7 @@ void STATE_WHAIT_GPS(){
         if (GPS.fix) {
                 Serial.println("Got GPS-fix! Switching to MEASURING state!");
                 state = MEASURING;
-                if (TripID = "notset"){
+                if (TripID == "notset"){
                   TripID = String(GPS.year) + "-" +String(GPS.month) + "-" + String(GPS.day) +"/" + String(GPS.hour)+":" + String(GPS.minute);
                   }
         }
