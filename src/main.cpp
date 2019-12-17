@@ -12,7 +12,7 @@
 #define GPS_ENABLE 4
 #define GPS_FIX 2
 
-#define MODE_SWITCH  9
+#define MODE_SWITCH  34
 #define PUMP 46
 
 #define POM
