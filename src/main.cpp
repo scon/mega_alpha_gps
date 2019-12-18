@@ -20,8 +20,8 @@
 #define ACC_MOVEMENT_PIN 30
 #define ACC_SHUTDOWN_PIN 31
 #define BOD_PIN 28
-#define ADC_BAT_SOLAR 6
-#define ADC_BAT_FONA 4
+#define ADC_BAT_SOLAR 4
+#define ADC_BAT_FONA 6
 
 //I2C libs
 #include <Wire.h>
