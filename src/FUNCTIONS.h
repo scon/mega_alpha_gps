@@ -21,7 +21,7 @@ void UpdateBatteryVoltageRaeadings(){
         //battery_fona  =  (analogRead(4));
 
         avg_solar = ((analogRead(ADC_BAT_SOLAR) * conversion_factor *2) );
-        avg_fona =  ((analogRead(ADC_BAT_FONA) * conversion_factor *2) );
+        avg_fona =  ((analogRead(ADC_BAT_FONA) * conversion_factor *2) * adc_bat_fona_coeff );
         battery_solar = (battery_solar + avg_solar)/2;
         battery_fona = (battery_fona + avg_fona)/2;
 
@@ -217,7 +217,7 @@ void UpdateDisplay(){
         display.print("V_Bat: ");
         display.println(String(battery_solar));
 
-        display.print("V_FG3: ");
+        display.print("V_Fona: ");
         display.println(String(battery_fona));
 
         display.print("Temp: ");

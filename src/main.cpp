@@ -88,7 +88,9 @@ float SN1_AE_value,SN2_AE_value,SN3_AE_value;           // fuer Ausgabe am Displ
 float battery_fona = 0;
 float battery_solar = 0;
 float v_ref = 3.3;
-float conversion_factor = v_ref / 1023;
+float conversion_factor = v_ref / 1023.0;
+float adc_bat_fona_coeff = 0.97;
+float adc_bat_solar_coeff = 1.00;
 float battery_threshold = 3.2;
 
 // Accelerometer
