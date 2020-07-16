@@ -113,6 +113,7 @@ int acc_offset = 345;
 
 bool acc_flag = false;
 bool acc_timer_flag = false;
+bool station_mode = false;
 
 unsigned long acc_timer= 0;
 unsigned long acc_sleep_timeout=120000;
@@ -152,8 +153,9 @@ const char* InfluxDB_Database = "ALPHASENSE";
 char MEASUREMENT_NAME[34] = "fona3_sdlong3";  //(+ Sensornummer)
 
 enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLEEP, TELEMETRY};
-
+enum State_station_enum {STATION_INIT, STATION_WHAIT_GPS, STATION_MEASURING, STATION_SEND_DATA};
 uint8_t state = INIT;
+uint8_t state_station = STATION_WHAIT_GPS;
 
 String DisplayState = "";
 String Uploadstring = "";
@@ -222,10 +224,6 @@ void STATE_INIT(){
           PumpOn();
           state = WHAIT_GPS;
         } else {
-          state = TELEMETRY;
-        }
-
-        if (digitalRead(MODE_SWITCH)==HIGH){
           state = TELEMETRY;
         }
 
@@ -746,11 +744,22 @@ Serial.println("Setup...2");
         display.display();
         delay(500);
 
+        state_station = STATION_INIT;
+        state = INIT;
+
+        if (digitalRead(MODE_SWITCH)==HIGH){
+          station_mode= true;
+
+        } else{
+          station_mode= false;
+        }
+
+
 }
 
-void state_machine_run(){
-        switch(state)
-        {
+void state_machine_mobile(){
+        switch(state){
+
         case INIT:
                 STATE_INIT();
                 break;
@@ -778,17 +787,63 @@ void state_machine_run(){
         case TRANS_SLEEP:
                 STATE_TRANSIT_SLEEP();
                 break;
-                case TELEMETRY:
-                        STATE_TELEMETRY();
-                        break;
+        case TELEMETRY:
+                STATE_TELEMETRY();
+                break;
+        }
+}
+
+void STATE_STATION_INIT(){
+  Serial.println("Station Init..");
+  delay(1000);
+  Serial.println("Switching to WAIT_GPS...");
+  state_station = STATION_WHAIT_GPS;
+}
+
+void STATE_STATION_WHAIT_GPS(){
+  Serial.println("WHAIT_GPS...");
+  delay(300);
+}
+
+void STATE_STATION_MEASURING(){
+
+}
+
+void STATE_STATION_SEND_DATA(){
+
+}
+
+void state_machine_station(){
+        switch(state_station)
+        {
+        case STATION_INIT:
+                STATE_STATION_INIT();
+                break;
+
+        case STATION_MEASURING:
+                STATE_STATION_MEASURING();
+                break;
+
+        case STATION_WHAIT_GPS:
+                STATE_STATION_WHAIT_GPS();
+                break;
+
+        case STATION_SEND_DATA:
+                STATE_STATION_SEND_DATA();
+                break;
         }
 }
 
 
 
-
 void loop() {
-        state_machine_run();
+
+        if (station_mode == false){
+        state_machine_mobile();
+      } else {
+        state_machine_station();
+      }
+
         UpdateBatteryVoltageRaeadings();
         //acc_flag = UpdateAccelerometerReadings(11);
         UpdateDisplay();
