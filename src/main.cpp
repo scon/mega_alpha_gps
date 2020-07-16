@@ -130,6 +130,9 @@ unsigned long millis_time;
 unsigned long measurement_timer = 0;
 unsigned long measurement_timeout = 10000;
 
+unsigned long station_measurement_time=30000; // Time to aquire a single datapoint in station mode
+unsigned long station_measurement_timer = 0;
+
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
 unsigned long data_upload = 0;
@@ -827,15 +830,130 @@ void STATE_STATION_WHAIT_GPS(){
 }
 
 void STATE_STATION_MEASURING(){
-if (GPS.fix) {
-  delay(1000);
+
+// Variables
+float SN1_Integral = 0;
+float SN2_Integral = 0;
+float SN3_Integral = 0;
+float TEMP_Integral = 0;
+
+float SN1_AE_Integral = 0;
+float SN2_AE_Integral = 0;
+float SN3_AE_Integral = 0;
+
+float battery_solar_Integral = 0;
+float battery_fona_Integral = 0;
+int measurement_counter = 0;
+
+// CODE
+if (GPS.fix) { // If GPS available start a measurement.
+  delay(50);
   GPS.parse(GPS.lastNMEA());
   Serial.println("GPS-LOCK");
   Serial.println("Mesureing..." + String(now()));
 
   station_measurement_counter += 1;
 
-  Serial.println();
+
+
+  //PASTED code
+  //Check for GPS-fix
+
+  Serial.println("Start Measurement...");
+
+
+  station_measurement_timer = millis();
+
+
+  //ADC Warmup
+  for (size_t w = 0; w < 5; w++) {
+  ads_A.readADC_SingleEnded(1);
+  ads_A.readADC_SingleEnded(2);
+  ads_A.readADC_SingleEnded(3);
+  ads_A.readADC_SingleEnded(4);
+  ads_B.readADC_SingleEnded(1);
+  ads_B.readADC_SingleEnded(2);
+  ads_B.readADC_SingleEnded(3);
+  ads_B.readADC_SingleEnded(4);
+  }
+
+  while (millis() - station_measurement_timer < station_measurement_time) {
+
+                  // Abrufen der Analogeinganswerte am ADS1115
+                  // Abrufen der an den Pins anliegenden Werte
+                  measurement_counter += 1;
+
+                  //ADC_A
+                  SN1_Integral+=ads_A.readADC_SingleEnded(1); // NO2   Work 1
+                  SN2_Integral+=ads_A.readADC_SingleEnded(2); // O3/NO Work 2
+                  SN3_Integral+=ads_A.readADC_SingleEnded(3); // NO    Work 3
+                  TEMP_Integral  +=ads_A.readADC_SingleEnded(0);// PT+
+
+                  //ADC_B
+                  SN1_AE_Integral+=ads_B.readADC_SingleEnded(1); // NO2   Aux 1
+                  SN2_AE_Integral+=ads_B.readADC_SingleEnded(2); // O3/NO Aux 2
+                  SN3_AE_Integral+=ads_B.readADC_SingleEnded(3); // NO    Aux 3
+
+                  //Messung();
+                  //Serial.println(String(SN1_value));
+                  battery_solar_Integral += (analogRead(ADC_BAT_SOLAR) * conversion_factor *2) ;
+                  battery_fona_Integral +=  (analogRead(ADC_BAT_FONA) * conversion_factor * 2);
+                  UpdateDisplay();
+                  UpdateAccelerometerReadings(7);
+          }
+
+
+  SN1_Integral = SN1_Integral / measurement_counter; // Bildung des arithmetischen Mittels
+  SN2_Integral = SN2_Integral / measurement_counter;
+  SN3_Integral = SN3_Integral / measurement_counter;
+  TEMP_Integral = TEMP_Integral / measurement_counter;
+  SN1_AE_Integral = SN1_AE_Integral / measurement_counter; // Bildung des arithmetischen Mittels
+  SN2_AE_Integral = SN2_AE_Integral / measurement_counter;
+  SN3_AE_Integral = SN3_AE_Integral / measurement_counter;
+
+  Umrechnungsfaktor = getUmrechnungsfaktor();
+
+  SN1_value = Umrechnungsfaktor * SN1_Integral;
+  SN2_value = Umrechnungsfaktor * SN2_Integral;
+  SN3_value = Umrechnungsfaktor * SN3_Integral;
+  Temp_value = Umrechnungsfaktor * TEMP_Integral;
+
+  SN1_AE_value = Umrechnungsfaktor * SN1_AE_Integral;
+  SN2_AE_value = Umrechnungsfaktor * SN2_AE_Integral;
+  SN3_AE_value = Umrechnungsfaktor * SN3_AE_Integral;
+
+  Geohash_fine   = hasher_fine.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
+  Geohash_normal = hasher_normal.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
+  Geohash_coarse = hasher_coarse.encode(GPS.latitudeDegrees,GPS.longitudeDegrees);
+
+  battery_solar = battery_solar_Integral / measurement_counter;
+  battery_fona =  battery_fona_Integral / measurement_counter;
+
+  setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+
+  //Serial.print("NOW:"); Serial.println (now());
+
+  //generateUploadString();
+  //data_upload += Uploadstring.length();
+
+  Serial.println("DONE");
+
+  Serial.println(String(SN1_value));
+  Serial.println(String(SN1_AE_value));
+  Serial.println("Measurements taken: " + String(measurement_counter));
+
+
+  //Serial.println(Uploadstring);
+
+  //writeLineToFile(Uploadstring,"DATA.TXT");
+
+
+  writeLineToFile(generateJSONString(),"STN_LOG.TXT");
+  writeLineToFile(generateJSONString(),"STN_DATA.TXT");
+  //PASTED CODE END
+
+
+  /*Serial.println();
 
 
   setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
@@ -853,6 +971,7 @@ if (GPS.fix) {
   Serial.println(GPS.year,DEC);
   Serial.print("Fix: "); Serial.print((int)GPS.fix);
   Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+*/
 
 } else{
   Serial.println("Lost GPS-LOCK...");
