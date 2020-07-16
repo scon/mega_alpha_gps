@@ -1,4 +1,4 @@
-// 16.07.2020 v.0.9.1
+// 16.07.2020 v.0.9.1.1
 
 #include <Arduino.h>
 #include <avr/wdt.h>
@@ -158,6 +158,8 @@ enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLE
 enum State_station_enum {STATION_INIT, STATION_WHAIT_GPS, STATION_MEASURING, STATION_SEND_DATA};
 uint8_t state = INIT;
 uint8_t state_station = STATION_WHAIT_GPS;
+
+int station_measurement_counter = 0;
 
 String DisplayState = "";
 String Uploadstring = "";
@@ -831,8 +833,15 @@ if (GPS.fix) {
   Serial.println("GPS-LOCK");
   Serial.println("Mesureing..." + String(now()));
 
+  station_measurement_counter += 1;
+
+  Serial.println();
+
+
   setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
 
+  Serial.print("\nMeasurement: ");
+  Serial.print(String(station_measurement_counter));
   Serial.print("\nTime: ");
   Serial.print(GPS.hour,DEC); Serial.print(':');
   Serial.print(GPS.minute,DEC); Serial.print(':');
@@ -843,18 +852,27 @@ if (GPS.fix) {
   Serial.print(GPS.month,DEC); Serial.print("/20");
   Serial.println(GPS.year,DEC);
   Serial.print("Fix: "); Serial.print((int)GPS.fix);
-  Serial.print("quality: "); Serial.println((int)GPS.fixquality);
+  Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
 
 } else{
   Serial.println("Lost GPS-LOCK...");
   Serial.println("Switching to WHAIT_GPS state!");
-  state_station = STATION_MEASURING;
+  state_station = STATION_WHAIT_GPS;
+}
+
+if (station_measurement_counter > 20){
+
+  station_measurement_counter = 0;
+  state_station = STATION_SEND_DATA;
 }
 
 }
 
 void STATE_STATION_SEND_DATA(){
-
+  Serial.println("Sending...");
+  delay(1000);
+  Serial.println("Switching to WHAIT_GPS state!");
+  state_station = STATION_WHAIT_GPS;
 }
 
 void state_machine_station(){
