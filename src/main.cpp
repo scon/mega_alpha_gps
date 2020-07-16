@@ -1,3 +1,4 @@
+// 16.07.2020
 #include <Arduino.h>
 #include <avr/wdt.h>
 #include <ArduinoJson.h>
@@ -798,14 +799,57 @@ void STATE_STATION_INIT(){
   delay(1000);
   Serial.println("Switching to WAIT_GPS...");
   state_station = STATION_WHAIT_GPS;
+  GpsOn();
 }
 
 void STATE_STATION_WHAIT_GPS(){
   Serial.println("WHAIT_GPS...");
   delay(300);
+  //PumpOff();
+  Serial.println("Waiting for GPS-fix...");
+  if (GPS.newNMEAreceived()) {
+          GPS.parse(GPS.lastNMEA());
+
+  }
+  if (GPS.fix) {
+          Serial.println("Got GPS-fix! Switching to MEASURING state!");
+          state_station = STATION_MEASURING;
+          if (TripID == "notset"){
+            TripID = String(GPS.year) + "-" +String(GPS.month) + "-" + String(GPS.day) +"/" + String(GPS.hour)+":" + String(GPS.minute);
+            }
+  }
+
+
+
 }
 
 void STATE_STATION_MEASURING(){
+if (GPS.fix) {
+  delay(1000);
+  GPS.parse(GPS.lastNMEA());
+  Serial.println("GPS-LOCK");
+  Serial.println("Mesureing..." + String(now()));
+
+  setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+
+  Serial.print("\nTime: ");
+  Serial.print(GPS.hour,DEC); Serial.print(':');
+  Serial.print(GPS.minute,DEC); Serial.print(':');
+  Serial.print(GPS.seconds,DEC); Serial.print('.');
+  Serial.println(GPS.milliseconds);
+  Serial.print("Date: ");
+  Serial.print(GPS.day,DEC); Serial.print('/');
+  Serial.print(GPS.month,DEC); Serial.print("/20");
+  Serial.println(GPS.year,DEC);
+  Serial.print("Fix: "); Serial.print((int)GPS.fix);
+  Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+
+} else{
+  Serial.println("Lost GPS-LOCK...");
+  Serial.println("Switching to MEASURING state!");
+
+
+}
 
 }
 
