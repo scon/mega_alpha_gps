@@ -204,6 +204,43 @@ return OutputString;
 
 }
 
+String generateJSONStringSTN(){
+  String OutputString = "";
+
+DynamicJsonDocument doc(2000);
+
+JsonObject fields=doc.createNestedObject();
+
+fields["type"] = "data";
+fields[SN1]=round_to_dp(SN1_value, 2);
+fields[SN2]=round_to_dp(SN2_value, 2);
+fields[SN3]=round_to_dp(SN3_value, 2);
+fields[SN1_AE]=round_to_dp(SN1_AE_value, 2);
+fields[SN2_AE]=round_to_dp(SN2_AE_value, 2);
+fields[SN3_AE]=round_to_dp(SN3_AE_value, 2);
+fields[TEMP]=round_to_dp(Temp_value, 2);
+
+fields["bat_solar"]=round_to_dp(battery_solar,2);
+fields["bat_fona"]=round_to_dp(battery_fona,2);
+fields["bme_h"]=round_to_dp(bme.hum(),2);
+fields["bme_t"]=round_to_dp(bme.temp(),2);
+fields["bme_P"]=round_to_dp(bme.pres(),2);
+fields["acc_v"]=round_to_dp(acc_vektor, 2);
+fields["speed"]=round_to_dp((GPS.speed * 1.852),2); // Knots to km/h
+fields["time"]= String(now());
+fields["BOD"]= digitalRead(BOD_PIN);
+JsonObject tags=doc.createNestedObject();
+
+tags["hour"] = GPS.hour;
+tags["minute"]= GPS.minute;
+tags["bme_t"]=round_to_dp(bme.temp(),2);
+tags["BOD"]= digitalRead(BOD_PIN);
+
+serializeJson(doc, OutputString);
+Serial.println(OutputString);
+return OutputString;
+
+}
 
 
 void UpdateDisplay(){

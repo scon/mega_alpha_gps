@@ -804,6 +804,8 @@ void STATE_STATION_INIT(){
   Serial.println("Station Init..");
   delay(1000);
   Serial.println("Switching to WAIT_GPS...");
+  TripID="STATION";
+
   state_station = STATION_WHAIT_GPS;
   GpsOn();
 }
@@ -850,20 +852,14 @@ if (GPS.fix) { // If GPS available start a measurement.
   delay(50);
   GPS.parse(GPS.lastNMEA());
   Serial.println("GPS-LOCK");
-  Serial.println("Mesureing..." + String(now()));
-
   station_measurement_counter += 1;
-
-
+  Serial.println("Stationloop: " + String(station_measurement_counter));
 
   //PASTED code
   //Check for GPS-fix
 
   Serial.println("Start Measurement...");
-
-
   station_measurement_timer = millis();
-
 
   //ADC Warmup
   for (size_t w = 0; w < 5; w++) {
@@ -948,8 +944,8 @@ if (GPS.fix) { // If GPS available start a measurement.
   //writeLineToFile(Uploadstring,"DATA.TXT");
 
 
-  writeLineToFile(generateJSONString(),"STN_LOG.TXT");
-  writeLineToFile(generateJSONString(),"STN_DATA.TXT");
+  writeLineToFile(generateJSONStringSTN(),"STN_LOG.TXT");
+  writeLineToFile(generateJSONStringSTN(),"STN_DATA.TXT");
   //PASTED CODE END
 
 
@@ -979,7 +975,7 @@ if (GPS.fix) { // If GPS available start a measurement.
   state_station = STATION_WHAIT_GPS;
 }
 
-if (station_measurement_counter > 20){
+if (station_measurement_counter >= 120){
 
   station_measurement_counter = 0;
   state_station = STATION_SEND_DATA;
@@ -990,6 +986,59 @@ if (station_measurement_counter > 20){
 void STATE_STATION_SEND_DATA(){
   Serial.println("Sending...");
   delay(1000);
+
+
+  //PASTED
+  display.clearDisplay();
+  display.setCursor(0,0);
+  Serial.println("Sending sensordata...");
+  display.println("STATIONDATA");
+  display.display();
+
+  ModemTurnOn();
+  delay(300);
+
+  if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","1900" "130.149.67.141","4001"
+          state = TRANS_SLEEP;
+          Serial.println("going to sleep");
+
+          return;
+  }
+
+
+  String SendBuffer = "";
+  // open the file for reading:
+  myFile = SD.open("STN_DATA.TXT");
+
+  Serial.println("Reading File: Data.");
+  if (myFile) {
+    // read from the file until there's nothing in it:
+    while (myFile.available()) {
+      char c = myFile.read();
+      SendBuffer += (c);
+
+        if (c == '\n') {
+
+        AdvancedParser("AT+CHTTPSSEND="+ String(SendBuffer.length()),"OK","","", 10);
+        Fona3G.print(SendBuffer);
+        Serial.print(SendBuffer);
+        //Parser("AT+CHTTPSSEND", 500);
+        AdvancedParser("AT+CHTTPSSEND", "OK", "", "", 500);
+        SendBuffer = "";
+
+      }
+
+    }
+  }
+    // close the file:
+    myFile.close();
+    SD.remove("STN_DATA.TXT");
+
+  delay(300);
+  CloseSession();
+  ModemTurnOff();
+
+    //PASTED
   Serial.println("Switching to WHAIT_GPS state!");
   state_station = STATION_WHAIT_GPS;
 }
