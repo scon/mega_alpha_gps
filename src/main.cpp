@@ -1,4 +1,5 @@
-// 16.07.2020
+// 16.07.2020 v.0.9.1
+
 #include <Arduino.h>
 #include <avr/wdt.h>
 #include <ArduinoJson.h>
@@ -842,13 +843,12 @@ if (GPS.fix) {
   Serial.print(GPS.month,DEC); Serial.print("/20");
   Serial.println(GPS.year,DEC);
   Serial.print("Fix: "); Serial.print((int)GPS.fix);
-  Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+  Serial.print("quality: "); Serial.println((int)GPS.fixquality);
 
 } else{
   Serial.println("Lost GPS-LOCK...");
-  Serial.println("Switching to MEASURING state!");
-
-
+  Serial.println("Switching to WHAIT_GPS state!");
+  state_station = STATION_MEASURING;
 }
 
 }
