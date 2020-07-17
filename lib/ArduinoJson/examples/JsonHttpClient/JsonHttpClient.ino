@@ -1,5 +1,5 @@
 // ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2019
+// Copyright Benoit Blanchon 2014-2020
 // MIT License
 //
 // This example shows how to parse a JSON document in an HTTP response.
@@ -15,6 +15,8 @@
 //     2.302038
 //   ]
 // }
+//
+// https://arduinojson.org/v6/example/http-client/
 
 #include <ArduinoJson.h>
 #include <Ethernet.h>
@@ -57,7 +59,8 @@ void setup() {
   // Check HTTP status
   char status[32] = {0};
   client.readBytesUntil('\r', status, sizeof(status));
-  if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+  // It should be "HTTP/1.0 200 OK" or "HTTP/1.1 200 OK"
+  if (strcmp(status + 9, "200 OK") != 0) {
     Serial.print(F("Unexpected response: "));
     Serial.println(status);
     return;
@@ -98,4 +101,16 @@ void loop() {
   // not used in this example
 }
 
-// Visit https://arduinojson.org/v6/example/http-client/ for more.
+// See also
+// --------
+//
+// https://arduinojson.org/ contains the documentation for all the functions
+// used above. It also includes an FAQ that will help you solve any
+// serialization  problem.
+//
+// The book "Mastering ArduinoJson" contains a tutorial on deserialization
+// showing how to parse the response from GitHub's API. In the last chapter,
+// it shows how to parse the huge documents from OpenWeatherMap
+// and Reddit.
+// Learn more at https://arduinojson.org/book/
+// Use the coupon code TWENTY for a 20% discount ❤❤❤❤❤

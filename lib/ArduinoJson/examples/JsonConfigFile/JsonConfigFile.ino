@@ -1,5 +1,5 @@
 // ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2019
+// Copyright Benoit Blanchon 2014-2020
 // MIT License
 //
 // This example shows how to store your project configuration in a file.
@@ -10,6 +10,14 @@
 //   "hostname": "examples.com",
 //   "port": 2731
 // }
+//
+// To run this program, you need an SD card connected to the SPI bus as follows:
+// * MOSI <-> pin 11
+// * MISO <-> pin 12
+// * CLK  <-> pin 13
+// * CS   <-> pin 4
+//
+// https://arduinojson.org/v6/example/config/
 
 #include <ArduinoJson.h>
 #include <SD.h>
@@ -19,7 +27,8 @@
 //
 // Never use a JsonDocument to store the configuration!
 // A JsonDocument is *not* a permanent storage; it's only a temporary storage
-// used during the serialization phase.
+// used during the serialization phase. See:
+// https://arduinojson.org/v6/faq/why-must-i-create-a-separate-config-object/
 struct Config {
   char hostname[64];
   int port;
@@ -108,7 +117,8 @@ void setup() {
   while (!Serial) continue;
 
   // Initialize SD library
-  while (!SD.begin()) {
+  const int chipSelect = 4;
+  while (!SD.begin(chipSelect)) {
     Serial.println(F("Failed to initialize SD library"));
     delay(1000);
   }
@@ -130,4 +140,15 @@ void loop() {
   // not used in this example
 }
 
-// Visit https://arduinojson.org/v6/example/config/ for more.
+// See also
+// --------
+//
+// https://arduinojson.org/ contains the documentation for all the functions
+// used above. It also includes an FAQ that will help you solve any
+// serialization or deserialization problem.
+//
+// The book "Mastering ArduinoJson" contains a case study of a project that has
+// a complex configuration with nested members.
+// Contrary to this example, the project in the book uses the SPIFFS filesystem.
+// Learn more at https://arduinojson.org/book/
+// Use the coupon code TWENTY for a 20% discount ❤❤❤❤❤
