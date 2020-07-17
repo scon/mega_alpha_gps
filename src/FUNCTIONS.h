@@ -164,7 +164,7 @@ return in_value;
 String generateJSONString(){
   String OutputString = "";
 
-DynamicJsonDocument doc(2000);
+DynamicJsonDocument doc(1024);
 
 JsonObject fields=doc.createNestedObject();
 
@@ -207,11 +207,11 @@ return OutputString;
 String generateJSONStringSTN(){
   String OutputString = "";
 
-DynamicJsonDocument doc(2000);
+DynamicJsonDocument doc(1024);
 
 JsonObject fields=doc.createNestedObject();
 
-fields["type"] = "data";
+fields["type"] = "stn";
 fields[SN1]=round_to_dp(SN1_value, 2);
 fields[SN2]=round_to_dp(SN2_value, 2);
 fields[SN3]=round_to_dp(SN3_value, 2);
@@ -235,6 +235,7 @@ tags["hour"] = GPS.hour;
 tags["minute"]= GPS.minute;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
+tags["TripID"] = TripID;
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);

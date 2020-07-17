@@ -1,4 +1,4 @@
-// 16.07.2020 17:21 v.0.9.1.4
+// 17.07.2020 17:21 v.0.9.1.5 
 
 #include <Arduino.h>
 #include <avr/wdt.h>
@@ -130,8 +130,9 @@ unsigned long millis_time;
 unsigned long measurement_timer = 0;
 unsigned long measurement_timeout = 10000;
 
-unsigned long station_measurement_time=30000; // Time to aquire a single datapoint in station mode
-unsigned long station_measurement_timer = 0;
+unsigned long station_measurement_time=30000; // DEFAULT 30000 / Time to aquire a single datapoint in station mode 
+unsigned long station_measurement_timer = 0; // init 0
+unsigned long station_max_loops = 120;
 
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
@@ -946,6 +947,10 @@ if (GPS.fix) { // If GPS available start a measurement.
 
   writeLineToFile(generateJSONStringSTN(),"STN_LOG.TXT");
   writeLineToFile(generateJSONStringSTN(),"STN_DATA.TXT");
+  if (station_measurement_counter % 40 == 0) {
+  Serial.println("20 minuten, writuing tel..");
+  writeLineToFile(generateJSONStringSTN(),"STN_TEL.TXT");
+  }
   //PASTED CODE END
 
 
@@ -975,7 +980,7 @@ if (GPS.fix) { // If GPS available start a measurement.
   state_station = STATION_WHAIT_GPS;
 }
 
-if (station_measurement_counter >= 120){
+if (station_measurement_counter >= station_max_loops){ // 120 pro stunde (Messung alle 30 Sekunden)
 
   station_measurement_counter = 0;
   state_station = STATION_SEND_DATA;
@@ -1008,7 +1013,7 @@ void STATE_STATION_SEND_DATA(){
 
   String SendBuffer = "";
   // open the file for reading:
-  myFile = SD.open("STN_DATA.TXT");
+  myFile = SD.open("STN_TEL.TXT");
 
   Serial.println("Reading File: Data.");
   if (myFile) {
@@ -1032,7 +1037,7 @@ void STATE_STATION_SEND_DATA(){
   }
     // close the file:
     myFile.close();
-    SD.remove("STN_DATA.TXT");
+    SD.remove("STN_TEL.TXT");
 
   delay(300);
   CloseSession();
