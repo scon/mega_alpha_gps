@@ -313,3 +313,8 @@ void UpdateDisplaySTN(){
         display.display();
 
 }
+
+String TimeString(){
+String out_str = String(GPS.hour) + String(GPS.minute) +String(GPS.seconds) +String(GPS.day) +String(GPS.month) +String(GPS.year);
+return out_str;
+}

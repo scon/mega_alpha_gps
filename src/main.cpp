@@ -147,6 +147,12 @@ unsigned long data_upload = 0;
 time_t old_gps_time;
 time_t new_gps_time;
 
+String old_time_str = "";
+String new_time_str = "";
+
+
+unsigned long last_corr_time = 0;
+
 
 int linesinfile = 0;
 int max_linesinfile = 25;
@@ -848,8 +854,9 @@ void STATE_STATION_WHAIT_GPS(){
                   }         
 
   Serial.println("WHAIT_GPS...");
-  Serial.println( "Now: " + now());
-  delay(300);
+  Serial.println( "Now: " + String(now()));
+  delay(2000);
+  Serial.println( "Now: " + String(now()));
   //PumpOff();
   Serial.println("Waiting for GPS-fix...");
   if (GPS.newNMEAreceived()) {
@@ -857,6 +864,8 @@ void STATE_STATION_WHAIT_GPS(){
 
   }
   if (GPS.fix) {
+          setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+          new_time_str = TimeString();
           Serial.println("Got GPS-fix! Switching to MEASURING state!");
           state_station = STATION_MEASURING;
           if (TripID == "notset"){
@@ -972,17 +981,29 @@ if (GPS.fix) { // If GPS available start a measurement.
   battery_solar = battery_solar_Integral / measurement_counter;
   battery_fona =  battery_fona_Integral / measurement_counter;
 
-  old_gps_time = now();
-
-  setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
   
-  new_gps_time = now();
 
-  Serial.println( "Now: " + now());
-  Serial.println( "old_gpstime: " + old_gps_time);
-  Serial.println( "new_gpstime: " + new_gps_time);
-  delay(1200);
-  Serial.println( "Now: " + now());
+  
+  //new_gps_time = now();
+  
+  old_time_str = new_time_str;
+  new_time_str = TimeString();
+
+  Serial.println("OLD_STR: " + old_time_str);
+  Serial.println("NEW_STR: " + new_time_str);
+
+  if (new_time_str != old_time_str) {
+        last_corr_time = millis();
+        setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+        Serial.println("Clock updated!!!");
+  }
+
+  Serial.println( "Now: " + String(now()));
+  //Serial.println( "old_gpstime: " + String(old_gps_time));
+  //Serial.println( "new_gpstime: " + String(new_gps_time));
+  //Serial.println( "diff: " + String(new_gps_time - old_gps_time));
+  Serial.println("Last_Corr: " + String(millis()-last_corr_time));
+  Serial.println( "Now: " + String(now()));
 
 
   //Serial.print("NOW:"); Serial.println (now());
