@@ -15,6 +15,10 @@
 #define GPS_FIX 2
 
 #define MODE_SWITCH  32
+#define BTN_T1  10
+#define BTN_T2  11
+#define BTN_SEND  47
+
 #define PUMP 46
 
 #define POM
@@ -130,13 +134,19 @@ unsigned long millis_time;
 unsigned long measurement_timer = 0;
 unsigned long measurement_timeout = 10000;
 
-unsigned long station_measurement_time=30000; // DEFAULT 30000 / Time to aquire a single datapoint in station mode 
+unsigned long station_measurement_time = 30000; //30000; // DEFAULT 30000 / Time to aquire a single datapoint in station mode 
 unsigned long station_measurement_timer = 0; // init 0
-unsigned long station_max_loops = 120;
+unsigned long station_max_loops = 120; // normal 120 :> 120 mal 0,5 Minuten = 1 h
 
 unsigned long gps_timer = 0;
 unsigned long gps_timeout = 7000;
 unsigned long data_upload = 0;
+
+//GPS Time correction
+
+time_t old_gps_time;
+time_t new_gps_time;
+
 
 int linesinfile = 0;
 int max_linesinfile = 25;
@@ -159,7 +169,7 @@ const char* InfluxDB_Database = "ALPHASENSE";
 char MEASUREMENT_NAME[34] = "fona3_sdlong3";  //(+ Sensornummer)
 
 enum State_enum {INIT, WHAIT_GPS, MEASURING, SEND_DATA, CHARGE, SLEEP, TRANS_SLEEP, TELEMETRY};
-enum State_station_enum {STATION_INIT, STATION_WHAIT_GPS, STATION_MEASURING, STATION_SEND_DATA};
+enum State_station_enum {STATION_INIT, STATION_WHAIT_GPS, STATION_MEASURING, STATION_SEND_DATA, STATION_EXTRACT};
 uint8_t state = INIT;
 uint8_t state_station = STATION_WHAIT_GPS;
 
@@ -169,6 +179,9 @@ String DisplayState = "";
 String Uploadstring = "";
 String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash ="", entry_geohash ="";
 String TripID = "notset";
+
+String STN_ID = "STN_3";
+
 // PROTOTYPES
 
 // Fona3G Functions
@@ -414,6 +427,7 @@ void STATE_MEASURING(){
         writeLineToFile(generateJSONString(),"LOGFILE.TXT");
         writeLineToFile(generateJSONString(),"DATA.TXT");
 
+
         Serial.print("\nTime: ");
         Serial.print(GPS.hour,DEC); Serial.print(':');
         Serial.print(GPS.minute,DEC); Serial.print(':');
@@ -469,7 +483,7 @@ void STATE_SEND_DATA(){
   if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","1900" "130.149.67.141","4001"
           state = TRANS_SLEEP;
           Serial.println("going to sleep");
-
+          ModemTurnOff();
           return;
   }
 
@@ -654,20 +668,24 @@ Serial.println("Setup...2");
 
 // SETUP SD-Card-Reader
 
-        display.println("SD...");
+        display.print("SD...");
         display.display();
         delay(500);
 
         Serial.print("Initializing SD card..."); //SD Setup
         if (!SD.begin(53)) {
-                Serial.println("initialization failed!");
+                Serial.println("failed!");
+                display.println("failed!");
+                display.display();
                 //while (1);
         }
         Serial.println("initialization done.");
 
+        display.println("OK!");
+        display.display();
 
 
-        display.println("BME280...");
+        display.print("BME280...");
         display.display();
         delay(500);
 
@@ -675,13 +693,19 @@ Serial.println("Setup...2");
         if(!bme.begin())
         {
                 Serial.println("Could not find BME280 sensor!");
+                display.println("failed!");
+                display.display();
                 delay(500);
-        }
 
+        }
+        
+        display.println("OK!");
+        display.display();
 
         display.println("I/O-Pins...");
         display.display();
         delay(500);
+
 // SETUP I/O-PINS
         pinMode(RST_FONA,OUTPUT); // Fona3G ResetPin
         pinMode(KEY_FONA,OUTPUT); // Fona3G KeyPin
@@ -694,10 +718,15 @@ Serial.println("Setup...2");
         digitalWrite(RST_FONA,HIGH);
         digitalWrite(KEY_FONA,HIGH);
         digitalWrite(GPS_ENABLE,HIGH);
-
+        
+        //Buttons&Switches
         pinMode(MODE_SWITCH,INPUT_PULLUP);
+        pinMode(BTN_T1,INPUT_PULLUP);
+        pinMode(BTN_T2,INPUT_PULLUP);
+        pinMode(BTN_SEND,INPUT_PULLUP);
 
-        pinMode(PUMP,OUTPUT); // Fona3G KeyPin
+        //Pump control
+        pinMode(PUMP,OUTPUT);
         digitalWrite(PUMP,LOW);
 
         display.println("Setup ADCs...");
@@ -805,14 +834,21 @@ void STATE_STATION_INIT(){
   Serial.println("Station Init..");
   delay(1000);
   Serial.println("Switching to WAIT_GPS...");
-  TripID="STATION";
+  TripID="station";
 
   state_station = STATION_WHAIT_GPS;
   GpsOn();
 }
 
 void STATE_STATION_WHAIT_GPS(){
+
+        if (digitalRead(BTN_T1) == LOW) {
+                  Serial.println("Switching to extract state!");
+                  state_station = STATION_EXTRACT;
+                  }         
+
   Serial.println("WHAIT_GPS...");
+  Serial.println( "Now: " + now());
   delay(300);
   //PumpOff();
   Serial.println("Waiting for GPS-fix...");
@@ -895,8 +931,18 @@ if (GPS.fix) { // If GPS available start a measurement.
                   //Serial.println(String(SN1_value));
                   battery_solar_Integral += (analogRead(ADC_BAT_SOLAR) * conversion_factor *2) ;
                   battery_fona_Integral +=  (analogRead(ADC_BAT_FONA) * conversion_factor * 2);
-                  UpdateDisplay();
+                  UpdateDisplaySTN();
                   UpdateAccelerometerReadings(7);
+
+                  if (digitalRead(BTN_T1) == LOW) {
+                  Serial.println("Switching to extract state!");
+                  state_station = STATION_EXTRACT;
+                  }
+                  if (digitalRead(BTN_SEND) == LOW) {
+                  Serial.println("Switching to sending state!");
+                  state_station = STATION_SEND_DATA;
+                  station_measurement_counter = 0;
+                  }             
           }
 
 
@@ -926,7 +972,18 @@ if (GPS.fix) { // If GPS available start a measurement.
   battery_solar = battery_solar_Integral / measurement_counter;
   battery_fona =  battery_fona_Integral / measurement_counter;
 
+  old_gps_time = now();
+
   setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+  
+  new_gps_time = now();
+
+  Serial.println( "Now: " + now());
+  Serial.println( "old_gpstime: " + old_gps_time);
+  Serial.println( "new_gpstime: " + new_gps_time);
+  delay(1200);
+  Serial.println( "Now: " + now());
+
 
   //Serial.print("NOW:"); Serial.println (now());
 
@@ -934,7 +991,7 @@ if (GPS.fix) { // If GPS available start a measurement.
   //data_upload += Uploadstring.length();
 
   Serial.println("DONE");
-
+  
   Serial.println(String(SN1_value));
   Serial.println(String(SN1_AE_value));
   Serial.println("Measurements taken: " + String(measurement_counter));
@@ -947,14 +1004,33 @@ if (GPS.fix) { // If GPS available start a measurement.
 
   writeLineToFile(generateJSONStringSTN(),"STN_LOG.TXT");
   writeLineToFile(generateJSONStringSTN(),"STN_DATA.TXT");
-  if (station_measurement_counter % 40 == 0) {
-  Serial.println("20 minuten, writuing tel..");
+
+          //DEBUG
+/*
+        Serial.println("Reading STN_DATA.TXT :");
+        if(SD.exists("STN_DATA.TXT")){
+        dataFile = SD.open("STN_DATA.TXT", FILE_READ);
+        if(dataFile){
+        while(dataFile.available()) {
+        Serial.write(dataFile.read());
+        }
+        dataFile.close();
+        }
+        
+        }
+
+        //DEBUG END
+   
+*/
+
+  if (station_measurement_counter % 10 == 0) { // Normal 40 
+  Serial.println("5 min, writing tel..");
   writeLineToFile(generateJSONStringSTN(),"STN_TEL.TXT");
   }
   //PASTED CODE END
 
 
-  /*Serial.println();
+  Serial.println();
 
 
   setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
@@ -972,7 +1048,7 @@ if (GPS.fix) { // If GPS available start a measurement.
   Serial.println(GPS.year,DEC);
   Serial.print("Fix: "); Serial.print((int)GPS.fix);
   Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-*/
+
 
 } else{
   Serial.println("Lost GPS-LOCK...");
@@ -1004,8 +1080,10 @@ void STATE_STATION_SEND_DATA(){
   delay(300);
 
   if (EstablishConnection("130.149.67.198","4000")==0) { //"heimdall.dedyn.io","1900" "130.149.67.141","4001"
-          state = TRANS_SLEEP;
-          Serial.println("going to sleep");
+          state_station = STATION_WHAIT_GPS;
+          ModemTurnOff();
+          Serial.println("Sending failed...");
+          Serial.println("Returning to Measuring State.");
 
           return;
   }
@@ -1048,6 +1126,15 @@ void STATE_STATION_SEND_DATA(){
   state_station = STATION_WHAIT_GPS;
 }
 
+void STATE_STATION_EXTRACT(){
+
+        delay(50);
+        if (digitalRead(BTN_T2) == LOW) {
+        Serial.println("Switching to WHAIT_GPS state!");
+        state_station = STATION_WHAIT_GPS;
+        }
+}
+
 void state_machine_station(){
         switch(state_station)
         {
@@ -1066,6 +1153,10 @@ void state_machine_station(){
         case STATION_SEND_DATA:
                 STATE_STATION_SEND_DATA();
                 break;
+
+        case STATION_EXTRACT:
+                STATE_STATION_EXTRACT();
+                break;
         }
 }
 
@@ -1075,11 +1166,14 @@ void loop() {
 
         if (station_mode == false){
         state_machine_mobile();
+        UpdateDisplay();
+
       } else {
         state_machine_station();
+        UpdateDisplaySTN();
       }
 
         UpdateBatteryVoltageRaeadings();
         //acc_flag = UpdateAccelerometerReadings(11);
-        UpdateDisplay();
+        
 }

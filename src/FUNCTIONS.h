@@ -197,6 +197,7 @@ tags["geohash"]= Geohash_fine;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
+tags["STN_ID"] = STN_ID;
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
@@ -236,6 +237,7 @@ tags["minute"]= GPS.minute;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
+tags["STN_ID"] = STN_ID;
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
@@ -275,6 +277,38 @@ void UpdateDisplay(){
         display.print("Trip:"); display.println(TripID);
 
 
+
+        display.display();
+
+}
+
+void UpdateDisplaySTN(){
+
+        display.clearDisplay();
+        display.setCursor(0,0);
+
+        display.print("STN-State: ");
+        display.println(String(state_station));
+
+        display.print("V_Bat: ");
+        display.println(String(battery_solar));
+
+        display.print("V_Fona: ");
+        display.println(String(battery_fona));
+
+        display.print("Temp: ");
+        display.println(String(bme.temp()));
+
+        display.print("NO2: ");
+        display.println(String(ads_A.readADC_SingleEnded(1) * getUmrechnungsfaktor()) + "/" + String(SN1_value));
+
+        display.print("Gain: ");
+        display.println(String(ads_A.getGain()));
+
+        display.print("STN-Loop:");
+        display.println(String(station_measurement_counter) + "/" + String(station_max_loops));
+        
+        display.print("Trip:"); display.println(TripID);
 
         display.display();
 

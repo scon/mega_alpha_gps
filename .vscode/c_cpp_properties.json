@@ -1,10 +1,12 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
 {
     "configurations": [
         {
-            "name": "!!! WARNING !!! AUTO-GENERATED FILE, PLEASE DO NOT MODIFY IT AND USE https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags"
-        },
-        {
-            "name": "Win32",
+            "name": "PlatformIO",
             "includePath": [
                 "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/include",
                 "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/src",
@@ -59,7 +61,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=40304",
+                "PLATFORMIO=50100",
                 "ARDUINO_AVR_MEGA2560",
                 "F_CPU=16000000L",
                 "ARDUINO_ARCH_AVR",
@@ -67,7 +69,6 @@
                 "__AVR_ATmega2560__",
                 ""
             ],
-            "intelliSenseMode": "clang-x64",
             "cStandard": "c11",
             "cppStandard": "c++11",
             "compilerPath": "C:/Users/Carlos/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
