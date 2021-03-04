@@ -812,8 +812,7 @@ void STATE_STATION_WHAIT_GPS(){
 
   Serial.println("WHAIT_GPS...");
   Serial.println( "Now: " + String(now()));
-  delay(2000);
-  Serial.println( "Now: " + String(now()));
+
   //PumpOff();
   Serial.println("Waiting for GPS-fix...");
   if (GPS.newNMEAreceived()) {
