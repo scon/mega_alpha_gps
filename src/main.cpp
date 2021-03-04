@@ -319,6 +319,8 @@ void STATE_MEASURING(){
                 return;
         }
 
+ UpdateClock();
+        Serial.print("NOW:"); Serial.println (now());
         Serial.println("Start Measurement...");
 
         measurement_timer = millis();
@@ -412,9 +414,7 @@ void STATE_MEASURING(){
 
         //setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
          
-         UpdateClock();
-        Serial.print("NOW:"); Serial.println (now());
-
+        
         //generateUploadString();
         //data_upload += Uploadstring.length();
 
@@ -854,6 +854,11 @@ if (GPS.fix) { // If GPS available start a measurement.
   delay(50);
   GPS.parse(GPS.lastNMEA());
   Serial.println("GPS-LOCK");
+  
+  UpdateClock();
+
+  Serial.println( "Now: " + String(now()));
+
   station_measurement_counter += 1;
   Serial.println("Stationloop: " + String(station_measurement_counter));
 
@@ -936,10 +941,7 @@ if (GPS.fix) { // If GPS available start a measurement.
 
   battery_solar = battery_solar_Integral / measurement_counter;
   battery_fona =  battery_fona_Integral / measurement_counter;
-    
-  UpdateClock();
-
-  Serial.println( "Now: " + String(now()));
+   
  
   Serial.println("DONE");
   
