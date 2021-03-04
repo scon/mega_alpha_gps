@@ -41,9 +41,9 @@
 File myFile;
 
 // VON MAX
-File sendFile;
-File restFile;
-File dataFile;
+//File sendFile;
+//File restFile;
+//File dataFile;
 
 // GPS
 #include <Adafruit_GPS.h>
@@ -410,9 +410,10 @@ void STATE_MEASURING(){
         battery_solar = battery_solar_Integral / measurement_counter;
         battery_fona =  battery_fona_Integral / measurement_counter;
 
-        setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
-
-        //Serial.print("NOW:"); Serial.println (now());
+        //setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+         
+         UpdateClock();
+        Serial.print("NOW:"); Serial.println (now());
 
         //generateUploadString();
         //data_upload += Uploadstring.length();
@@ -461,7 +462,7 @@ void STATE_MEASURING(){
                 Serial.print("Altitude: "); Serial.println(GPS.altitude);
                 Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
 
-                setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+                // setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
 
                 Serial.print("NOW:"); Serial.println (now());
         }
@@ -525,50 +526,6 @@ void STATE_SEND_DATA(){
   delay(300);
   CloseSession();
   state = SLEEP;
-}
-
-
-void STATE_SEND_DATA_old(){
-
-        int divide_flag= 0;
-
-        PumpOff();
-
-        Serial.println("SENDING DATA...");
-
-        ModemTurnOn();
-
-        if (EstablishConnection("87.123.157.161","1900")==0) {
-                state = TRANS_SLEEP;
-                Serial.println("going to sleep");
-
-                return;
-        }
-        Serial.println("Connection Established");
-        do {
-                Serial.println("Dividing");
-                divide_flag=divideFile(20);
-
-                if(SendSequence("SEND.TXT")!=0) {
-                        SD.remove("DATA.txt");
-                        restToNewDataFile();
-                }
-                else{
-                        break;
-                }
-
-                /* code */
-        } while(divide_flag != 0);
-
-        CloseSession();
-        ModemTurnOff();
-
-        state = TRANS_SLEEP;
-
-
-        //if (CheckBattery() == false) {
-        //        state =  CHARGE;
-        //}
 }
 
 void STATE_TELEMETRY(){
@@ -864,8 +821,7 @@ void STATE_STATION_WHAIT_GPS(){
 
   }
   if (GPS.fix) {
-          setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
-          new_time_str = TimeString();
+          UpdateClock();
           Serial.println("Got GPS-fix! Switching to MEASURING state!");
           state_station = STATION_MEASURING;
           if (TripID == "notset"){
@@ -980,38 +936,11 @@ if (GPS.fix) { // If GPS available start a measurement.
 
   battery_solar = battery_solar_Integral / measurement_counter;
   battery_fona =  battery_fona_Integral / measurement_counter;
-
-  
-
-  
-  //new_gps_time = now();
-  
-  old_time_str = new_time_str;
-  new_time_str = TimeString();
-
-  Serial.println("OLD_STR: " + old_time_str);
-  Serial.println("NEW_STR: " + new_time_str);
-
-  if (new_time_str != old_time_str) {
-        last_corr_time = millis();
-        setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
-        Serial.println("Clock updated!!!");
-  }
+    
+  UpdateClock();
 
   Serial.println( "Now: " + String(now()));
-  //Serial.println( "old_gpstime: " + String(old_gps_time));
-  //Serial.println( "new_gpstime: " + String(new_gps_time));
-  //Serial.println( "diff: " + String(new_gps_time - old_gps_time));
-  Serial.println("Last_Corr: " + String(millis()-last_corr_time));
-  Serial.println( "Now: " + String(now()));
-  //ffrf
-
-
-  //Serial.print("NOW:"); Serial.println (now());
-
-  //generateUploadString();
-  //data_upload += Uploadstring.length();
-
+ 
   Serial.println("DONE");
   
   Serial.println(String(SN1_value));
@@ -1053,10 +982,7 @@ if (GPS.fix) { // If GPS available start a measurement.
 
 
   Serial.println();
-
-
-  setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
-
+  
   Serial.print("\nMeasurement: ");
   Serial.print(String(station_measurement_counter));
   Serial.print("\nTime: ");
@@ -1197,5 +1123,6 @@ void loop() {
 
         UpdateBatteryVoltageRaeadings();
         //acc_flag = UpdateAccelerometerReadings(11);
+
         
 }
