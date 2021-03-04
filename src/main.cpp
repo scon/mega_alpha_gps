@@ -1004,6 +1004,7 @@ if (GPS.fix) { // If GPS available start a measurement.
   //Serial.println( "diff: " + String(new_gps_time - old_gps_time));
   Serial.println("Last_Corr: " + String(millis()-last_corr_time));
   Serial.println( "Now: " + String(now()));
+  //ffrf
 
 
   //Serial.print("NOW:"); Serial.println (now());

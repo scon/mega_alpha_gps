@@ -8,6 +8,7 @@
         {
             "name": "PlatformIO",
             "includePath": [
+                "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/include",
                 "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/src",
                 "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/lib/SD-1.2.3/src",
                 "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/lib/BME280-master/src",
@@ -41,6 +42,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
+                    "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/include",
                     "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/src",
                     "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/lib/SD-1.2.3/src",
                     "c:/Users/Carlos/git_mega_alpha/mega_alpha_gps/lib/BME280-master/src",
