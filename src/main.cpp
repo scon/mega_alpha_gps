@@ -811,6 +811,7 @@ void STATE_STATION_WHAIT_GPS(){
                   }         
 
   Serial.println("WHAIT_GPS...");
+  delay(100);
   Serial.println( "Now: " + String(now()));
 
   //PumpOff();
