@@ -304,7 +304,7 @@ int SendSequence(String FileToSend) {
     return 1;
 }
 
-
+/*
 int divideFile(int n) {
   if(SD.exists("SEND.txt")) {
     SD.remove("SEND.txt");
@@ -350,6 +350,7 @@ int divideFile(int n) {
            /*for (size_t i = 0; i < 256; i++) {
              c[i] = (char)0;
            }*/
+           /*
            c[0] = '\0';
          }
          for (size_t i = 0; i<256; i++) {
@@ -387,7 +388,9 @@ int divideFile(int n) {
    return -1;
  }
 }
+*/
 
+/*
 int restToNewDataFile() {
   char c[256] = "";
   if(SD.exists("REST.txt")) {
@@ -429,3 +432,4 @@ int restToNewDataFile() {
     return -1;
   }
 }
+*/

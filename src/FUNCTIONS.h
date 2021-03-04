@@ -318,3 +318,24 @@ String TimeString(){
 String out_str = String(GPS.hour) + String(GPS.minute) +String(GPS.seconds) +String(GPS.day) +String(GPS.month) +String(GPS.year);
 return out_str;
 }
+
+void UpdateClock(){
+
+if (GPS.fix) {
+
+  old_time_str = new_time_str;
+  new_time_str = TimeString();
+
+  Serial.println("OLD_STR: " + old_time_str);
+  Serial.println("NEW_STR: " + new_time_str);
+
+  if(new_time_str != old_time_str) {
+        //last_corr_time = millis();
+        setTime(GPS.hour,GPS.minute,GPS.seconds,GPS.day,GPS.month,GPS.year);
+        Serial.println("*** Clock updated ***");
+        }
+  else{
+        Serial.println("*!* Clock update failed *!*");
+}
+}
+}
