@@ -185,7 +185,6 @@ String DisplayState = "";
 String Uploadstring = "";
 String Geohash_fine = "", Geohash_normal= "", Geohash_coarse ="", last_geohash ="", entry_geohash ="";
 String TripID = "notset";
-
 String STN_ID = "STN_3";
 
 // PROTOTYPES
