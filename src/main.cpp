@@ -29,6 +29,21 @@
 #define ADC_BAT_SOLAR 4
 #define ADC_BAT_FONA 6
 
+//EEPROM CONF
+
+#include <EEPROM.h>
+//#include <avr/eeprom.h>
+
+#include "myTypes.h" //CONFIG DATA STRUCTURE
+
+unsigned long input_timer = 0;
+unsigned long setup_delay = 10000;
+
+String input = "werfsadf";
+configData_t cfg;
+int cfgStart = 0;
+
+
 //I2C libs
 #include <Wire.h>
 
@@ -197,6 +212,9 @@ String STN_ID = "STN_3";
 
 // other Functions
 #include <FUNCTIONS.h>
+
+// EEPROM Config Functions
+#include <eeprom_config.h>
 
 // Interrupt is called once a millisecond, looks for any new GPS data, and stores it
 SIGNAL(TIMER0_COMPA_vect) {
@@ -612,7 +630,29 @@ analogReference(EXTERNAL);
 
 // SETUP SERIAL
         Serial.begin(115200);
-        Serial.println("Setup...");
+        //EEPROMCFG
+         loadConfig();
+
+  input_timer = millis();
+
+  print_cfg();
+
+  Serial.println("Hit 'Return' to start configuration menue!");
+  Serial.println("Measurement starts in: " + String(10000) + " ms.");
+
+
+  while (millis() - input_timer < setup_delay ) {
+    if (Serial.available() > 0) {
+      char recieved = Serial.read();
+      if (recieved == '\n') {
+        Serial.println("Start_Menue");
+        start_menue();
+      }
+    }
+  }
+
+  loadConfig();
+        //EEPROMCFG
         Fona3G.begin(115200);
         Wire.begin();
 Serial.println("Setup...2");
@@ -1124,6 +1164,10 @@ void loop() {
 
         UpdateBatteryVoltageRaeadings();
         //acc_flag = UpdateAccelerometerReadings(11);
+
+       // String IDstr = cfg.stn_id;
+
+       // Serial.println("STN_ID is:" + String(cfg.stn_id));
 
         
 }

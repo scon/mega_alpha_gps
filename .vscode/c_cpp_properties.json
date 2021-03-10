@@ -1,81 +1,19 @@
-//
-// !!! WARNING !!! AUTO-GENERATED FILE!
-// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
-// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
-//
 {
     "configurations": [
         {
-            "name": "PlatformIO",
+            "name": "Win32",
             "includePath": [
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/include",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/SD-1.2.3/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/BME280-master/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ArduinoJson/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/arduino-geohash",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_SSD1306",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_GPS_Library",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit-GFX-Library-master",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_ADS1X15",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Low-Power-master",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ssd1306-master/src",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Time",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/cores/arduino",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/variants/mega",
-                "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ArduinoJsonSAV/src",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
-                "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                "C:/Users/Carlos/.platformio/packages/tool-unity",
-                ""
+                "${workspaceFolder}/**"
             ],
-            "browse": {
-                "limitSymbolsToIncludedHeaders": true,
-                "path": [
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/include",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/SD-1.2.3/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/BME280-master/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ArduinoJson/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/arduino-geohash",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_SSD1306",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_GPS_Library",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit-GFX-Library-master",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Adafruit_ADS1X15",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Low-Power-master",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ssd1306-master/src",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/Time",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/cores/arduino",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/variants/mega",
-                    "c:/Users/Carlos/Documents/GitHub/mega_alpha_gps/lib/ArduinoJsonSAV/src",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
-                    "C:/Users/Carlos/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                    "C:/Users/Carlos/.platformio/packages/tool-unity",
-                    ""
-                ]
-            },
             "defines": [
-                "PLATFORMIO=50100",
-                "ARDUINO_AVR_MEGA2560",
-                "F_CPU=16000000L",
-                "ARDUINO_ARCH_AVR",
-                "ARDUINO=10808",
-                "__AVR_ATmega2560__",
-                ""
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
             ],
+            "compilerPath": "C:\\Program Files\\LLVM\\bin\\clang.exe",
             "cStandard": "c11",
             "cppStandard": "c++11",
-            "compilerPath": "C:/Users/Carlos/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
-            "compilerArgs": [
-                "-mmcu=atmega2560",
-                ""
-            ]
+            "intelliSenseMode": "windows-clang-x64"
         }
     ],
     "version": 4

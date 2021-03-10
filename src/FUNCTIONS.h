@@ -197,7 +197,7 @@ tags["geohash"]= Geohash_fine;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
-tags["STN_ID"] = STN_ID;
+tags["STN_ID"] = String(cfg.stn_id);  //STN_ID;
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
@@ -237,7 +237,8 @@ tags["minute"]= GPS.minute;
 tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
-tags["STN_ID"] = STN_ID;
+tags["STN_ID"] = String(cfg.stn_id); //STN_ID;
+
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
