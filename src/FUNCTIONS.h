@@ -105,8 +105,10 @@ void writeLineToFile(String line, String WLF_filename){
                 Serial.println("error opening" + WLF_filename);
         }
 }
-//fg
+
+/*
 void generateUploadString(){
+       
         // Messwerte in String zusammenbauen
         Uploadstring =
                 String(MEASUREMENT_NAME) + "," +
@@ -153,6 +155,8 @@ void generateUploadString(){
                 String(now());
 
 }
+*/
+
 
 float round_to_dp( float in_value, int decimal_place )
 {
@@ -164,7 +168,7 @@ return in_value;
 String generateJSONString(){
   String OutputString = "";
 
-DynamicJsonDocument doc(1024);
+DynamicJsonDocument doc(512);
 
 JsonObject fields=doc.createNestedObject();
 
@@ -198,6 +202,7 @@ tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
 tags["STN_ID"] = String(cfg.stn_id);  //STN_ID;
+tags["SNS_ID"] = String(cfg.sns_id);
 
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
@@ -208,7 +213,8 @@ return OutputString;
 String generateJSONStringSTN(){
   String OutputString = "";
 
-DynamicJsonDocument doc(1024);
+//DynamicJsonDocument doc(1024);
+DynamicJsonDocument doc(512);
 
 JsonObject fields=doc.createNestedObject();
 
@@ -232,19 +238,22 @@ fields["time"]= String(now());
 fields["BOD"]= digitalRead(BOD_PIN);
 JsonObject tags=doc.createNestedObject();
 
-tags["hour"] = GPS.hour;
-tags["minute"]= GPS.minute;
-tags["bme_t"]=round_to_dp(bme.temp(),2);
+tags["h"] = GPS.hour;
+tags["m"]= GPS.minute;
+//tags["bme_t"]=round_to_dp(bme.temp(),2);
 tags["BOD"]= digitalRead(BOD_PIN);
 tags["TripID"] = TripID;
 tags["STN_ID"] = String(cfg.stn_id); //STN_ID;
+tags["SNS_ID"] = String(cfg.sns_id);
 
-
+//Serial.print("Overflow: "); Serial.println(doc.overflow);
 serializeJson(doc, OutputString);
 Serial.println(OutputString);
 return OutputString;
 
 }
+
+
 
 
 void UpdateDisplay(){
@@ -267,8 +276,13 @@ void UpdateDisplay(){
         display.print("LiF: ");
         display.println(String(linesinfile) + "/" + String(max_linesinfile));
 
-        display.print("ACC_T: ");
-        display.println(String(millis() -acc_timer) + "/" + String(acc_sleep_timeout));
+        display.print("MEM: ");
+        display.println(String(freeMemory()));
+
+       // display.print("ACC_T: ");
+       // display.println(String(millis() -acc_timer) + "/" + String(acc_sleep_timeout));
+
+      
 
         //display.print("X:"); display.print(String(acc_X_abs));
         //display.print("Y:"); display.print(String(acc_Y_abs));
@@ -303,13 +317,16 @@ void UpdateDisplaySTN(){
         display.print("NO2: ");
         display.println(String(ads_A.readADC_SingleEnded(1) * getUmrechnungsfaktor()) + "/" + String(SN1_value));
 
-        display.print("Gain: ");
-        display.println(String(ads_A.getGain()));
+        //display.print("Gain: ");
+        //display.println(String(ads_A.getGain()));
 
         display.print("STN-Loop:");
         display.println(String(station_measurement_counter) + "/" + String(station_max_loops));
         
         display.print("Trip:"); display.println(TripID);
+
+        display.print("MEM: ");
+        display.println(String(freeMemory()));
 
         display.display();
 
@@ -340,3 +357,5 @@ if (GPS.fix) {
 }
 }
 }
+
+   

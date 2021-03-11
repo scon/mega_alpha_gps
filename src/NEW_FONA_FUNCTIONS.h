@@ -63,7 +63,7 @@ void ResetBoard() {
 int UnlockSIM() {
   AdvancedParser("AT", "OK", "", "", 5000);
   AdvancedParser("AT+CPIN?", "OK", "", "", 5000);
-  if (AdvancedParser("AT+CPIN=\"4804\"", "OK", "", "", 5000) != 1) {
+  if (AdvancedParser("AT+CPIN=\"" + String(cfg.sim_pin)+ "\"", "OK", "", "", 5000) != 1) { //if (AdvancedParser("AT+CPIN=\"4804\"", "OK", "", "", 5000) != 1) {
     Serial.println("SIM UNLOCK ERROR");
     return 0;
   }
