@@ -52,14 +52,16 @@ void print_cfg() {
   Serial.println();
   Serial.println("Current configuration:");
   Serial.print("(1)STN_ID: "); Serial.println(cfg.stn_id);
-  //Serial.print("(2)Wifi_name: "); Serial.println(cfg.wifi_name);
-  //Serial.print("(3)Wifi_pw: "); Serial.println(cfg.wifi_pw);
-  //Serial.print("(4)Influx_enabled: "); Serial.println(String(cfg.influx_en));
-  //Serial.print("(5)Influx_port: "); Serial.println(String(cfg.influx_port));
-  //Serial.print("(6)Influx_ip: "); Serial.println(cfg.influx_ip);
-  //Serial.print("(7)Meas. frequency: ") ; Serial.println(String(cfg.freq));
-  //Serial.print("(8)Serial_enable: ") ; Serial.println(String(cfg.ser_en));
-  //Serial.print("(9)Serial format [(0)CSV/(1)JSON]: ") ; Serial.println(String(cfg.ser_f));
+  Serial.print("(2)Wifi_name: "); Serial.println(cfg.wifi_name);
+  Serial.print("(3)Wifi_pw: "); Serial.println(cfg.wifi_pw);
+  Serial.print("(4)Influx_enabled: "); Serial.println(String(cfg.influx_en));
+  Serial.print("(5)Influx_port: "); Serial.println(String(cfg.influx_port));
+  Serial.print("(6)Influx_ip: "); Serial.println(cfg.influx_ip);
+  Serial.print("(7)Meas. frequency: ") ; Serial.println(String(cfg.freq));
+  Serial.print("(8)Serial_enable: ") ; Serial.println(String(cfg.ser_en));
+  Serial.print("(9)Serial format [(0)CSV/(1)JSON]: ") ; Serial.println(String(cfg.ser_f));
+  Serial.println("(r)reset: "); 
+
   Serial.println();
 }
 
@@ -123,7 +125,13 @@ void start_menue() {
       cfg.ser_f = (read_command().toInt());
       saveConfig();
     }
+    else if (input == "r") {
 
+      Serial.println("resetting all values");
+
+      eraseConfig();
+      
+    }
 
   }
 }
