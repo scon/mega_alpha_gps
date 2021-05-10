@@ -13,6 +13,7 @@ int AdvancedParser(String command, String response_a, String response_b, String 
 
   if (command != "") {
     Fona3G.print(command + "\r\n"); //Kommando senden
+    Serial.println("Command: " + command );
   }
 
   unsigned long entry = millis(); // Timer Starten
@@ -63,7 +64,8 @@ void ResetBoard() {
 int UnlockSIM() {
   AdvancedParser("AT", "OK", "", "", 5000);
   AdvancedParser("AT+CPIN?", "OK", "", "", 5000);
-  if (AdvancedParser("AT+CPIN=\"" + String(cfg.sim_pin)+ "\"", "OK", "", "", 5000) != 1) { //if (AdvancedParser("AT+CPIN=\"4804\"", "OK", "", "", 5000) != 1) {
+  Serial.println(cfg.sim_pin);
+  if (AdvancedParser("AT+CPIN=\"" + String(cfg.sim_pin) + "\"", "OK", "", "", 5000) != 1) { //if (AdvancedParser("AT+CPIN=\"4804\"", "OK", "", "", 5000) != 1) {
     Serial.println("SIM UNLOCK ERROR");
     return 0;
   }
@@ -243,18 +245,22 @@ int sendWithCheck(String Filename) {
 int QuickConnect(String server_ip, String server_port) {
 
   AdvancedParser("AT+CREG?", "OK", "", "", 5000);
-  AdvancedParser("AT+CREG=1", "+CREG: 1", "", "", 10000);
+  AdvancedParser("AT+CREG=1", "+CREG: 1", "OK", "", 10000);
   AdvancedParser("AT+CGATT=1", "OK", "ERROR", "", 5000);
-  AdvancedParser("AT+CGSOCKCONT=1,\"IP\",\"internet.telekom\"", "OK", "", "", 5000);
-  AdvancedParser("AT+CSOCKAUTH=1,1,\"congstar\",\"cs\"", "OK", "", "", 5000);
+
+  //AdvancedParser("AT+CGSOCKCONT=1,\"IP\",\"internet.telekom\"", "OK", "", "", 5000);
+  //AdvancedParser("AT+CSOCKAUTH=1,1,\"congstar\",\"cs\"", "OK", "", "", 5000);
+
+  AdvancedParser("AT+CGSOCKCONT=1,\"IP\",\"" + String(cfg.apn) +"\"", "OK", "", "", 5000);
+  AdvancedParser("AT+CSOCKAUTH=1,1,\"" + String(cfg.apn_usr) + "\",\"" + String(cfg.apn_pw) + "\"", "OK", "", "", 5000);
   AdvancedParser("AT+CSOCKSETPN=1", "OK", "", "", 5000);
-  AdvancedParser("AT+NETOPEN", "+NETOPEN: 0", "+IP ERROR: Network is already opened", "", 20000);
+  AdvancedParser("AT+NETOPEN", "+NETOPEN: 0", "+IP ERROR: Network is already opened", "+NETOPEN: 1", 20000);
 
   AdvancedParser("AT+CHTTPSSTART", "OK", "", "", 5000);
 
 
   //if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", "OK", "", "", 5000) == 1) {   // Test TCP-Server
-  if (AdvancedParser("AT+CHTTPSOPSE=\""+ server_ip + "\"," + server_port + ",1", "OK", "", "", 5000) == 1) {   //  InfluxDB
+  if (AdvancedParser("AT+CHTTPSOPSE=\""+ server_ip + "\"," + server_port + ",1", "OK", "", "", 5000) == 1) {   //  InfluxDB server_port
   return 1;
 }
 else {
@@ -272,9 +278,11 @@ int EstablishConnection(String server_ip, String server_port){
 
   AdvancedParser("", "+CPIN: SIM PIN", "", "", 10000);
 
+  if (cfg.sim_pin_en == 1){
   if (UnlockSIM() == 0) {
     Serial.println("SIM Failed");
     return 0;
+  }
   }
 
   while (QuickConnect(server_ip,server_port) == 0) {

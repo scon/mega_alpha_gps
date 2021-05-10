@@ -64,10 +64,10 @@ void print_cfg() {
   Serial.print("(3)SIM pin: "); Serial.println(cfg.sim_pin);
   Serial.print("(4)Server IP: "); Serial.println(cfg.server_ip);
   Serial.print("(5)Server PORT: "); Serial.println(cfg.server_port);
-  //Serial.print("(6)Influx_ip: "); Serial.println(cfg.influx_ip);
-  //Serial.print("(7)Meas. frequency: ") ; Serial.println(String(cfg.freq));
-  //Serial.print("(8)Serial_enable: ") ; Serial.println(String(cfg.ser_en));
-  //Serial.print("(9)Serial format [(0)CSV/(1)JSON]: ") ; Serial.println(String(cfg.ser_f));
+  Serial.print("(6)SIM pin(0/1): "); Serial.println(cfg.sim_pin_en);
+  Serial.print("(7)APN: ") ; Serial.println(String(cfg.apn));
+  Serial.print("(8)APN_USR: ") ; Serial.println(String(cfg.apn_usr));
+  Serial.print("(9)APN_PW: ") ; Serial.println(String(cfg.apn_pw));
   Serial.println("(r)reset: "); 
 
   Serial.println();
@@ -109,29 +109,30 @@ void start_menue() {
     }
 
     else if (input == "6") {
-      Serial.println("Enter Influx IP:");
-      //strncpy(cfg.influx_ip, read_command().c_str() , sizeof(cfg.wifi_name) );
+      Serial.println("Enter SIM Pin (0/1):");
+      
+      cfg.sim_pin_en = (read_command().toInt());
       saveConfig();
     }
 
     else if (input == "7") {
-      Serial.println("Set Measurement freq. (ms):");
+      Serial.println("Set GSM APN:");
       //cfg.freq = (read_command().toInt());
+      strncpy(cfg.apn, read_command().c_str() , sizeof(cfg.apn) );
       saveConfig();
     }
 
     else if (input == "8") {
-      Serial.println("Enable(1)/Disable(0) serial output:");
-      //cfg.ser_en = (read_command().toInt());
+      Serial.println("Set APN Username:");
+      strncpy(cfg.apn_usr, read_command().c_str() , sizeof(cfg.apn_usr) );
       saveConfig();
     }
 
     else if (input == "9") {
 
-      Serial.println("Select serial output format [(0)CSV/(1)JSON]:");
-
-      //cfg.ser_f = (read_command().toInt());
-      saveConfig();
+         Serial.println("Set APN Password:");
+      strncpy(cfg.apn_pw, read_command().c_str() , sizeof(cfg.apn_pw) );
+            saveConfig();
     }
     else if (input == "r") {
 
@@ -146,7 +147,7 @@ void start_menue() {
 
 void manageEEPROMcfg(){
                 //EEPROMCFG
-        loadConfig();
+        
 
         input_timer = millis();
 

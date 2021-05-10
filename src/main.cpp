@@ -821,6 +821,10 @@ void setup()
 
         state_station = STATION_INIT;
         state = INIT;
+        
+        loadConfig();
+
+        manageEEPROMcfg();
 
         if (digitalRead(MODE_SWITCH) == HIGH)
         {

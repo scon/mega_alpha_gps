@@ -10,7 +10,10 @@ typedef struct {
   char sim_pin[8];                  // PIN of SIM-card
   char stn_id[20];                  // ID of the STATION
   char sns_id[20];                  // ID of the Sensormodule
-//  int  influx_en;                   // 0=no influx, 1=use influx
+  char apn[30];                     // APN for GSM
+  char apn_usr[30];                 // APN Username
+  char apn_pw[30];                  // APN Password
+  int  sim_pin_en;                  // 0=no_pin, 1=use pin
 //  int  influx_port;                 // influx_portnumber
 //  int freq;                         // Measuring frequency
 //  int ser_en;                       // Serial enabled
