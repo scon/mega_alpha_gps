@@ -644,6 +644,8 @@ void STATE_TELEMETRY()
         JsonObject tags = tel.createNestedObject();
 
         tags["BOD"] = digitalRead(BOD_PIN);
+        tags["STN_ID"] = String(cfg.stn_id); //STN_ID;
+        tags["SNS_ID"] = String(cfg.sns_id);
 
         serializeJson(tel, TelemetryString);
         TelemetryString += '\n';
@@ -693,7 +695,7 @@ void setup()
         //EEPROMCFG
         Fona3G.begin(115200);
         Wire.begin();
-        Serial.println("Setup...2");
+        Serial.println("Setup...");
         // SETUP DISPLAY
 
         display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -703,14 +705,15 @@ void setup()
         display.clearDisplay();
 
         display.println("Boot...");
+        display.println("Hold SEND_BTN to enter CFG mode!");
         display.display();
-        delay(500);
+        //delay(500);
 
         // SETUP SD-Card-Reader
 
         display.print("SD...");
         display.display();
-        delay(500);
+        //delay(500);
 
         Serial.print("Initializing SD card..."); //SD Setup
         if (!SD.begin(53))
@@ -722,19 +725,19 @@ void setup()
         }
         Serial.println("initialization done.");
 
-        display.println("OK!");
+        display.println("SD-CARD OK!");
         display.display();
 
         display.print("BME280...");
         display.display();
-        delay(500);
+        //delay(500);
 
         if (!bme.begin())
         {
                 Serial.println("Could not find BME280 sensor!");
                 display.println("failed!");
                 display.display();
-                delay(500);
+                //delay(500);
         }
 
         display.println("OK!");
@@ -742,7 +745,7 @@ void setup()
 
         display.println("I/O-Pins...");
         display.display();
-        delay(500);
+        //delay(500);
 
         // SETUP I/O-PINS
         pinMode(RST_FONA, OUTPUT); // Fona3G ResetPin
@@ -769,7 +772,7 @@ void setup()
 
         display.println("Setup ADCs...");
         display.display();
-        delay(500);
+        //delay(500);
 
         // SETUP ADC's
         ads_A.setGain(GAIN_TWO); // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
@@ -782,9 +785,8 @@ void setup()
 
         display.println("Start GPS...");
         display.display();
-        delay(500);
-        Serial.println("Adafruit GPS library basic test!");
-
+        //delay(500);
+        
         // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
         GPS.begin(9600);
 
@@ -817,14 +819,12 @@ void setup()
 
         display.println("Done...");
         display.display();
-        delay(500);
+        delay(1000);
 
         state_station = STATION_INIT;
         state = INIT;
         
-        loadConfig();
-
-        manageEEPROMcfg();
+        loadConfig();       
 
         if (digitalRead(MODE_SWITCH) == HIGH)
         {
@@ -834,6 +834,11 @@ void setup()
         else
         {
                 station_mode = false;
+                
+
+                if (digitalRead(BTN_SEND) == LOW){
+                        manageEEPROMcfg();
+                }
         }
 }
 
