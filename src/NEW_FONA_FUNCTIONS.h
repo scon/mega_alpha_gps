@@ -244,6 +244,33 @@ int sendWithCheck(String Filename) {
 
 int QuickConnect(String server_ip, String server_port) {
 
+  int pause_adp = 500;
+
+  delay(pause_adp);
+  AdvancedParser("AT+CREG?", "", "", "", 10000);
+  delay(pause_adp);
+  AdvancedParser("AT+CREG?", "+CREG: 0,5", "+CREG: 0,0", "OK", 5000);
+  delay(pause_adp);
+  AdvancedParser("AT+CREG=1", "OK", "", "", 10000);
+  delay(pause_adp);
+  AdvancedParser("AT+CGATT=1", "OK", "", "", 10000);
+  delay(pause_adp);
+  AdvancedParser("AT+CGSOCKCONT=1,\"IP\",\"" + String(cfg.apn) +"\"", "OK", "", "", 5000);
+  delay(pause_adp);
+  AdvancedParser("AT+CSOCKAUTH=1,1,\"" + String(cfg.apn_usr) + "\",\"" + String(cfg.apn_pw) + "\"", "OK", "", "", 10000);
+  delay(pause_adp);
+  AdvancedParser("AT+CSOCKSETPN=1", "OK", "", "", 5000);
+  delay(pause_adp);
+  AdvancedParser("AT+NETOPEN", "+NETOPEN: 0", "OK", "", 12000);
+  delay(pause_adp);
+  AdvancedParser("AT+CHTTPSSTART", "OK", "", "", 5000);
+  delay(pause_adp);
+
+  
+
+
+
+  /*delay(10000);
   AdvancedParser("AT+CREG?", "OK", "", "", 5000);
   AdvancedParser("AT+CREG=1", "+CREG: 1", "OK", "", 10000);
   AdvancedParser("AT+CGATT=1", "OK", "ERROR", "", 5000);
@@ -255,8 +282,10 @@ int QuickConnect(String server_ip, String server_port) {
   AdvancedParser("AT+CSOCKAUTH=1,1,\"" + String(cfg.apn_usr) + "\",\"" + String(cfg.apn_pw) + "\"", "OK", "", "", 5000);
   AdvancedParser("AT+CSOCKSETPN=1", "OK", "", "", 5000);
   AdvancedParser("AT+NETOPEN", "+NETOPEN: 0", "+IP ERROR: Network is already opened", "+NETOPEN: 1", 20000);
-
+  delay(10000);
   AdvancedParser("AT+CHTTPSSTART", "OK", "", "", 5000);
+
+  */
 
 
   //if (AdvancedParser("AT+CHTTPSOPSE=\"130.149.67.168\",3000,1", "OK", "", "", 5000) == 1) {   // Test TCP-Server
@@ -276,7 +305,9 @@ int EstablishConnection(String server_ip, String server_port){
   int FailedConnection = 0;
   ResetBoard();
 
-  AdvancedParser("", "+CPIN: SIM PIN", "", "", 10000);
+  delay(100);
+
+  AdvancedParser("", "PB DONE", "", "", 10000);
 
   if (cfg.sim_pin_en == 1){
   if (UnlockSIM() == 0) {

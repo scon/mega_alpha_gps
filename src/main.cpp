@@ -84,6 +84,8 @@ File myFile;
 #include <Adafruit_GPS.h>
 Adafruit_GPS GPS(&UltGps);
 boolean usingInterrupt = true;
+boolean continuous_mode = false;
+
 #define GPSECHO false
 
 // Time calculations
@@ -338,7 +340,7 @@ void STATE_WHAIT_GPS()
                 }
         }
 
-        if (digitalRead(ACC_MOVEMENT_PIN) == LOW)
+        if (((digitalRead(ACC_MOVEMENT_PIN) == LOW) && (continuous_mode == false)) || (digitalRead(BTN_SEND) == LOW))
         {
                 state = SEND_DATA;
         }
@@ -399,7 +401,7 @@ void STATE_MEASURING()
                 ads_B.readADC_SingleEnded(4);
         }
 
-        while (last_geohash == entry_geohash && millis() - measurement_timer < measurement_timeout)
+        while (last_geohash == entry_geohash && millis() - measurement_timer < cfg.meas_timeout)
         {
 
                 gps_timer = millis();
@@ -413,7 +415,12 @@ void STATE_MEASURING()
                                 break;
                         }
 
-                        // Abrufen der Analogeinganswerte am ADS1115
+                       
+                        UpdateDisplay();
+                        UpdateAccelerometerReadings(7);
+                }
+
+                 // Abrufen der Analogeinganswerte am ADS1115
                         // Abrufen der an den Pins anliegenden Werte
                         measurement_counter += 1;
 
@@ -432,9 +439,6 @@ void STATE_MEASURING()
                         //Serial.println(String(SN1_value));
                         battery_solar_Integral += (analogRead(ADC_BAT_SOLAR) * conversion_factor * 2);
                         battery_fona_Integral += (analogRead(ADC_BAT_FONA) * conversion_factor * 2);
-                        UpdateDisplay();
-                        UpdateAccelerometerReadings(7);
-                }
 
                 last_geohash = hasher_fine.encode(GPS.latitudeDegrees, GPS.longitudeDegrees);
                 Serial.println("Entry-Geohash: " + entry_geohash);
@@ -541,10 +545,12 @@ void STATE_MEASURING()
                 Serial.println(now());
         }
 
-        if (digitalRead(ACC_MOVEMENT_PIN) == LOW)
+        if (((digitalRead(ACC_MOVEMENT_PIN) == LOW) && (continuous_mode == false)) || (digitalRead(BTN_SEND) == LOW))
         {
                 state = SEND_DATA;
         }
+
+
 
         if (CheckBattery() == false)
         {
@@ -554,6 +560,11 @@ void STATE_MEASURING()
 
 void STATE_SEND_DATA()
 {
+
+        if (cfg.no_send ==1){
+                state = SLEEP;
+                return;
+        }
         display.clearDisplay();
         display.setCursor(0, 0);
         Serial.println("Sending sensordata...");
@@ -607,6 +618,11 @@ void STATE_SEND_DATA()
 
 void STATE_TELEMETRY()
 {
+
+    if (cfg.no_send ==1){
+                state = SLEEP;
+                return;
+        }
 
         display.clearDisplay();
         display.setCursor(0, 0);
@@ -706,6 +722,7 @@ void setup()
 
         display.println("Boot...");
         display.println("Hold SEND_BTN to enter CFG mode!");
+        display.println("Hold BTN_T2 for continuous mode!");
         display.display();
         //delay(500);
 
@@ -824,7 +841,19 @@ void setup()
         state_station = STATION_INIT;
         state = INIT;
         
-        loadConfig();       
+        loadConfig();
+
+
+        if (digitalRead(BTN_T2) == LOW){
+                continuous_mode = true;
+                digitalWrite(PUMP,HIGH);
+                delay(300);
+               digitalWrite(PUMP,LOW);
+               delay(300);
+        }
+        
+        
+
 
         if (digitalRead(MODE_SWITCH) == HIGH)
         {
@@ -1104,16 +1133,29 @@ void STATE_STATION_MEASURING()
                 state_station = STATION_WHAIT_GPS;
         }
 
+
+        
+
         if (station_measurement_counter >= station_max_loops)
         { // 120 pro stunde (Messung alle 30 Sekunden)
 
                 station_measurement_counter = 0;
+
+                if (cfg.no_send ==0){
                 state_station = STATION_SEND_DATA;
+        }
+                
         }
 }
 
 void STATE_STATION_SEND_DATA()
 {
+
+        if (cfg.no_send ==1){
+                state_station = STATION_WHAIT_GPS;
+                return;
+        }
+
         Serial.println("Sending...");
         delay(1000);
 

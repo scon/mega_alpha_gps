@@ -14,7 +14,8 @@ typedef struct {
   char apn_usr[30];                 // APN Username
   char apn_pw[30];                  // APN Password
   int  sim_pin_en;                  // 0=no_pin, 1=use pin
-//  int  influx_port;                 // influx_portnumber
+  int  meas_timeout;                 // influx_portnumber
+  int  no_send;                      // log only
 //  int freq;                         // Measuring frequency
 //  int ser_en;                       // Serial enabled
 //  int ser_f;                        // Serial format (JSON/CSV)

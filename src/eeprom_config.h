@@ -16,6 +16,8 @@ strncpy(cfg.sns_id, "SNS_0" , sizeof(cfg.sns_id) );
 strncpy(cfg.sim_pin, "4804" , sizeof(cfg.sim_pin) );
 strncpy(cfg.server_ip, "130.149.67.198" , sizeof(cfg.server_ip) );
 strncpy(cfg.server_port, "4000" , sizeof(cfg.server_port) );
+strncpy(cfg.meas_timeout, "10000", sizeof(cfg.meas_timeout));
+strncpy(cfg.no_send, "1", sizeof(cfg.no_send));
 
  /*cfg.stn_id = "STN_0";
  cfg.sns_id = "SNS_0";
@@ -68,6 +70,8 @@ void print_cfg() {
   Serial.print("(7)APN: ") ; Serial.println(String(cfg.apn));
   Serial.print("(8)APN_USR: ") ; Serial.println(String(cfg.apn_usr));
   Serial.print("(9)APN_PW: ") ; Serial.println(String(cfg.apn_pw));
+  Serial.print("(10)meas_timeout: ") ; Serial.println(String(cfg.meas_timeout));
+  Serial.print("(11)log_only: ") ; Serial.println(String(cfg.no_send));
   Serial.println("(r)reset: "); 
 
   Serial.println();
@@ -134,6 +138,20 @@ void start_menue() {
       strncpy(cfg.apn_pw, read_command().c_str() , sizeof(cfg.apn_pw) );
             saveConfig();
     }
+        else if (input == "10") {
+      Serial.println("meas_timeout:");
+      
+      cfg.meas_timeout = (read_command().toInt());
+      saveConfig();
+    }
+
+     else if (input == "11") {
+      Serial.println("Log Only (0/1):");
+      
+      cfg.no_send = (read_command().toInt());
+      saveConfig();
+    }
+
     else if (input == "r") {
 
       Serial.println("resetting all values");
@@ -141,6 +159,7 @@ void start_menue() {
       eraseConfig();
       
     }
+
 
   }
 }
